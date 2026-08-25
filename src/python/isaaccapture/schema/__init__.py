@@ -43,6 +43,9 @@ from ._schema import (
     KeyEvent,
     KeyboardOutput,
     KeyboardOutputRecord,
+    # SpaceMouse types (raw 3Dconnexion axis/button state).
+    SpaceMouseOutput,
+    SpaceMouseOutputRecord,
     # OGLO tactile glove types.
     OgloGloveSample,
     OgloGloveSampleRecord,
@@ -145,6 +148,9 @@ __all__ = [
     "KeyEvent",
     "KeyboardOutput",
     "KeyboardOutputRecord",
+    # SpaceMouse types (raw 3Dconnexion axis/button state).
+    "SpaceMouseOutput",
+    "SpaceMouseOutputRecord",
     # OGLO tactile glove types.
     "OgloGloveSample",
     "OgloGloveSampleRecord",

@@ -19,6 +19,9 @@ Available Retargeters:
     - KeyboardToSe3RelRetargeter: Keyboard press state -> relative EE delta control
     - KeyboardGripperRetargeter: Keyboard K-key toggle -> gripper open/closed
     - KeyboardToSe2Retargeter: Keyboard press state -> base velocity command (v_x, v_y, omega_z)
+    - SpaceMouseToSe3RelRetargeter: SpaceMouse translation/rotation state -> relative EE delta control
+    - SpaceMouseGripperRetargeter: SpaceMouse left-button toggle -> gripper open/closed
+    - SpaceMouseToSe2Retargeter: SpaceMouse translation/rotation state -> base velocity command (v_x, v_y, omega_z)
     - SO101ClutchRetargeter: Clutch-rebased absolute EE pose for the SO-101 5-DOF arm --
       re-latches BOTH home position and orientation on every engage, base-frame left-composed, no
       fixed offset
@@ -135,6 +138,33 @@ _LAZY_IMPORTS: dict[str, tuple[str, str, str | None]] = {
     "KeyboardToSe2RetargeterConfig": (
         ".keyboard_se2_retargeter",
         "KeyboardToSe2RetargeterConfig",
+        None,
+    ),
+    # .spacemouse_se3_retargeter  (requires retargeters-lite extra: scipy)
+    "SpaceMouseToSe3RelRetargeter": (
+        ".spacemouse_se3_retargeter",
+        "SpaceMouseToSe3RelRetargeter",
+        "retargeters-lite",
+    ),
+    "SpaceMouseToSe3RelRetargeterConfig": (
+        ".spacemouse_se3_retargeter",
+        "SpaceMouseToSe3RelRetargeterConfig",
+        "retargeters-lite",
+    ),
+    "SpaceMouseGripperRetargeter": (
+        ".spacemouse_se3_retargeter",
+        "SpaceMouseGripperRetargeter",
+        None,
+    ),
+    # .spacemouse_se2_retargeter
+    "SpaceMouseToSe2Retargeter": (
+        ".spacemouse_se2_retargeter",
+        "SpaceMouseToSe2Retargeter",
+        None,
+    ),
+    "SpaceMouseToSe2RetargeterConfig": (
+        ".spacemouse_se2_retargeter",
+        "SpaceMouseToSe2RetargeterConfig",
         None,
     ),
     # .SO101 (SO-101 5-DOF arm: clutch EE-pose, analog gripper)
@@ -274,6 +304,11 @@ __all__ = [
     "KeyboardGripperRetargeter",
     "KeyboardToSe2Retargeter",
     "KeyboardToSe2RetargeterConfig",
+    "SpaceMouseToSe3RelRetargeter",
+    "SpaceMouseToSe3RelRetargeterConfig",
+    "SpaceMouseGripperRetargeter",
+    "SpaceMouseToSe2Retargeter",
+    "SpaceMouseToSe2RetargeterConfig",
     # SO-101 5-DOF arm retargeters
     "SO101ClutchRetargeter",
     "SO101GripperRetargeter",
