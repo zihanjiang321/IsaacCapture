@@ -23,6 +23,7 @@ from .keyboard_source import (
 )
 from .source_lookup import find_sources
 from .key_event_testing import FakeKeyEventSource
+from .gamepad_source import GamepadAxesType, GamepadButtonsType, GamepadSource
 from .joint_state_source import JointStateSource
 from .full_body_source import FullBodySource
 from .message_channel_source import MessageChannelSource
@@ -39,6 +40,7 @@ from .deviceio_tensor_types import (
     ControllerSnapshotTrackedType,
     Generic3AxisPedalOutputTrackedType,
     KeyboardOutputTrackedType,
+    GamepadOutputTrackedType,
     JointStateOutputTrackedType,
     FullBodyPoseTrackedType,
     DeviceIOHeadPoseTracked,
@@ -46,6 +48,7 @@ from .deviceio_tensor_types import (
     DeviceIOControllerSnapshotTracked,
     DeviceIOGeneric3AxisPedalOutputTracked,
     DeviceIOKeyboardOutputTracked,
+    DeviceIOGamepadOutputTracked,
     DeviceIOJointStateOutputTracked,
     DeviceIOFullBodyPoseTracked,
     MessageChannelMessagesTrackedType,
@@ -70,6 +73,9 @@ __all__ = [
     "KeyEventSource",
     "find_sources",
     "FakeKeyEventSource",
+    "GamepadAxesType",
+    "GamepadButtonsType",
+    "GamepadSource",
     "JointStateSource",
     "FullBodySource",
     "MessageChannelSource",
@@ -83,6 +89,7 @@ __all__ = [
     "ControllerSnapshotTrackedType",
     "Generic3AxisPedalOutputTrackedType",
     "KeyboardOutputTrackedType",
+    "GamepadOutputTrackedType",
     "JointStateOutputTrackedType",
     "FullBodyPoseTrackedType",
     "MessageChannelMessagesTrackedType",
@@ -93,6 +100,7 @@ __all__ = [
     "DeviceIOControllerSnapshotTracked",
     "DeviceIOGeneric3AxisPedalOutputTracked",
     "DeviceIOKeyboardOutputTracked",
+    "DeviceIOGamepadOutputTracked",
     "DeviceIOJointStateOutputTracked",
     "DeviceIOFullBodyPoseTracked",
     "DeviceIOMessageChannelMessagesTracked",

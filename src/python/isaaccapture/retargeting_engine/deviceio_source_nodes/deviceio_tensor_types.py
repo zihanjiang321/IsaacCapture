@@ -20,6 +20,7 @@ from isaaccapture.schema import (
     ControllerSnapshot,
     Generic3AxisPedalOutput,
     KeyboardOutput,
+    GamepadOutput,
     JointStateOutput,
     FullBodyPose,
     MessageChannelMessagesTracked,
@@ -97,6 +98,12 @@ class KeyboardOutputTrackedType(_PayloadTensorType):
     """KeyboardOutput payload from DeviceIO KeyboardTracker."""
 
     _payload_cls = KeyboardOutput
+
+
+class GamepadOutputTrackedType(_PayloadTensorType):
+    """GamepadOutput payload from DeviceIO GamepadTracker."""
+
+    _payload_cls = GamepadOutput
 
 
 class JointStateOutputTrackedType(_PayloadTensorType):
@@ -188,6 +195,18 @@ def DeviceIOKeyboardOutputTracked() -> TensorGroupType:
     return TensorGroupType(
         "deviceio_keyboard_output",
         [KeyboardOutputTrackedType("keyboard_tracked")],
+    )
+
+
+def DeviceIOGamepadOutputTracked() -> TensorGroupType:
+    """Tracked gamepad data from DeviceIO GamepadTracker.
+
+    Contains:
+        gamepad_tracked: GamepadOutput handle, or None when inactive
+    """
+    return TensorGroupType(
+        "deviceio_gamepad_output",
+        [GamepadOutputTrackedType("gamepad_tracked")],
     )
 
 
