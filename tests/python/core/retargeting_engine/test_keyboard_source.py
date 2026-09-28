@@ -197,6 +197,37 @@ class TestAttach:
 
         assert surface.captured == []
 
+    def test_failed_capture_leaves_nothing_attached(self, monkeypatch):
+        src = KeyboardSource(name="keyboard")
+        provider = _RecordingProvider()
+        monkeypatch.setattr(src, "create_provider", lambda name: provider)
+        surface = _FakeSurface()
+
+        def refuse_capture(captured):
+            raise RuntimeError("cannot capture")
+
+        surface.set_keyboard_captured = refuse_capture
+
+        with pytest.raises(RuntimeError):
+            src.attach(surface)
+        assert surface.listeners == []
+        assert provider.closed
+
+    def test_failed_subscribe_closes_the_provider(self, monkeypatch):
+        src = KeyboardSource(name="keyboard")
+        provider = _RecordingProvider()
+        monkeypatch.setattr(src, "create_provider", lambda name: provider)
+        surface = _FakeSurface()
+
+        def refuse_listener(on_key, on_focus_lost):
+            raise RuntimeError("cannot subscribe")
+
+        surface.add_key_listener = refuse_listener
+
+        with pytest.raises(RuntimeError):
+            src.attach(surface)
+        assert provider.closed
+
     def test_attach_rejects_surface_without_keyboard(self):
         surface = _FakeSurface()
         surface.supports_keyboard = False

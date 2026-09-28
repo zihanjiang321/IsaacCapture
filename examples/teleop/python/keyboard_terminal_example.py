@@ -19,6 +19,7 @@ A keyboard-only pipeline needs no OpenXR runtime, so no CloudXR or headset is in
     python keyboard_terminal_example.py
 """
 
+import contextlib
 import os
 import re
 import select
@@ -96,13 +97,21 @@ class TerminalKeySource:
     def __enter__(self):
         self._saved_attrs = termios.tcgetattr(self._fd)
         tty.setcbreak(self._fd)
-        self._write(b"\x1b[?1004h")  # focus in/out reports
-        # Ask for kitty protocol support; the primary device attributes reply ends the probe.
-        self._write(b"\x1b[?u\x1b[c")
-        reply = self._read_until(b"c", timeout_s=0.5)
-        self.kitty = re.search(rb"\x1b\[\?\d+u", reply) is not None
-        if self.kitty:
-            self._write(b"\x1b[>%du" % _KITTY_FLAGS)
+        try:
+            self._write(b"\x1b[?1004h")  # focus in/out reports
+            # Ask for kitty protocol support; the primary device attributes reply ends the probe.
+            self._write(b"\x1b[?u\x1b[c")
+            reply = self._read_until(b"c", timeout_s=0.5)
+            self.kitty = re.search(rb"\x1b\[\?\d+u", reply) is not None
+            if self.kitty:
+                self._write(b"\x1b[>%du" % _KITTY_FLAGS)
+        except BaseException:
+            # __exit__ never runs when __enter__ raises: restore the terminal here, settings
+            # first, in case the failure was writing to it.
+            termios.tcsetattr(self._fd, termios.TCSADRAIN, self._saved_attrs)
+            with contextlib.suppress(OSError):
+                self._write(b"\x1b[?1004l")
+            raise
         return self
 
     def __exit__(self, *exc):

@@ -163,9 +163,19 @@ class KeyboardSource(IDeviceIOSource):
             else:
                 provider.key_up(code)
 
-        unsubscribe = surface.add_key_listener(on_key, provider.release_all)
+        # A surface that fails to subscribe or capture must not stay wired to the tracker.
+        try:
+            unsubscribe = surface.add_key_listener(on_key, provider.release_all)
+        except BaseException:
+            provider.close()
+            raise
         if capture:
-            surface.set_keyboard_captured(True)
+            try:
+                surface.set_keyboard_captured(True)
+            except BaseException:
+                unsubscribe()
+                provider.close()
+                raise
 
         detached = False
 
