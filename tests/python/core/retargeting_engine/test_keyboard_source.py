@@ -55,22 +55,22 @@ class TestKeyboardSourceConversion:
         tracker = KeyboardSource(name="keyboard").get_tracker()
         assert tracker.get_name() == "KeyboardTracker"
 
-    def test_held_key_marks_all_keys_bitmap(self):
+    def test_held_key_marks_held_bitmap(self):
         outputs = _run_source(KeyboardSource(name="keyboard"), [KEY_W])
 
-        bitmap = np.asarray(outputs["keyboard_all_keys"][0])
+        bitmap = np.asarray(outputs["keyboard_held"][0])
         assert bitmap[KEY_W] == 1
         assert bitmap.sum() == 1
 
-    def test_all_keys_bitmap_covers_keys_outside_se3_subset(self):
+    def test_held_bitmap_covers_keys_outside_se3_subset(self):
         outputs = _run_source(KeyboardSource(name="keyboard"), [KEY_F1])
 
-        assert np.asarray(outputs["keyboard_all_keys"][0])[KEY_F1] == 1
+        assert np.asarray(outputs["keyboard_held"][0])[KEY_F1] == 1
 
     def test_no_provider_yields_none(self):
         outputs = _run_source(KeyboardSource(name="keyboard"), None)
 
-        assert outputs["keyboard_all_keys"].is_none
+        assert outputs["keyboard_held"].is_none
         assert outputs["keyboard_pressed"].is_none
 
     def test_pressed_bitmap_counts_press_events_only(self):
@@ -83,7 +83,7 @@ class TestKeyboardSourceConversion:
         outputs = _run_source(KeyboardSource(name="keyboard"), [], events)
 
         pressed = np.asarray(outputs["keyboard_pressed"][0])
-        held = np.asarray(outputs["keyboard_all_keys"][0])
+        held = np.asarray(outputs["keyboard_held"][0])
         assert pressed[KEY_W] == 1
         assert pressed[KEY_A] == 0
         assert held.sum() == 0
@@ -93,7 +93,7 @@ class TestKeyboardSourceConversion:
         events = [(1, KEY_FN, KeyAction.PRESS), (2, KEY_FN, KeyAction.RELEASE)]
         outputs = _run_source(src, [KEYBOARD_KEY_CODE_COUNT - 1], events)
 
-        held = np.asarray(outputs["keyboard_all_keys"][0])
+        held = np.asarray(outputs["keyboard_held"][0])
         pressed = np.asarray(outputs["keyboard_pressed"][0])
         assert KEYBOARD_KEY_CODE_COUNT == 768  # Linux KEY_CNT
         assert held.shape == pressed.shape == (KEYBOARD_KEY_CODE_COUNT,)

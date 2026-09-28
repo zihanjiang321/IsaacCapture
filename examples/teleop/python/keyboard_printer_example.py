@@ -6,7 +6,7 @@ Keyboard Printer Example.
 
 Opens a small GLFW window and feeds its key events into a KeyboardSource. Keys only count
 while that window has focus; click elsewhere and every held key is released. Prints held
-keys each frame plus every press/release, using the "keyboard_all_keys" and
+keys each frame plus every press/release, using the "keyboard_held" and
 "keyboard_pressed" bitmaps.
 
 The window is a minimal ``KeyEventSource``: any host window (a sim viewer, a browser
@@ -135,7 +135,7 @@ def main():
             start_time = time.time()
             while time.time() - start_time < 30.0 and window.poll():
                 result = session.step()
-                held_group = result["keyboard_all_keys"]
+                held_group = result["keyboard_held"]
                 pressed_group = result["keyboard_pressed"]
                 elapsed = session.get_elapsed_time()
 

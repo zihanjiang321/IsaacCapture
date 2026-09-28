@@ -95,10 +95,79 @@ TEST_CASE("KeyboardProvider: focus loss releases only that provider's keys", "[u
     browser->release_all();
     const auto snapshot = tracker.input_state()->drain();
 
-    // W is still held through the window provider; the browser's releases are reported.
+    // W is still held through the window provider, so only A is released.
     CHECK(snapshot.pressed_keys == std::vector<uint16_t>{ KEY_W });
-    CHECK(event_codes(snapshot, false) == std::vector<uint16_t>{ KEY_W, KEY_A });
+    CHECK(event_codes(snapshot, false) == std::vector<uint16_t>{ KEY_A });
     CHECK(snapshot.provider_count == 2);
+}
+
+TEST_CASE("KeyboardInputState: events follow the merged keyboard across providers", "[unit][keyboard]")
+{
+    core::KeyboardTracker tracker;
+    auto a = tracker.create_provider("a");
+    auto b = tracker.create_provider("b");
+    auto state = tracker.input_state();
+
+    CHECK(a->key_down(KEY_W, 1));
+    CHECK(b->key_down(KEY_W, 2)); // b's own state changes; the merged key was already down
+    CHECK_FALSE(b->key_down(KEY_W, 3)); // autorepeat
+    auto snapshot = state->drain();
+    CHECK(event_codes(snapshot, true) == std::vector<uint16_t>{ KEY_W });
+    REQUIRE(snapshot.events.size() == 1);
+    CHECK(snapshot.events[0].timestamp_ns == 1);
+
+    CHECK(a->key_up(KEY_W, 4)); // b still holds it
+    snapshot = state->drain();
+    CHECK(snapshot.events.empty());
+    CHECK(snapshot.pressed_keys == std::vector<uint16_t>{ KEY_W });
+
+    CHECK(b->key_up(KEY_W, 5));
+    snapshot = state->drain();
+    REQUIRE(snapshot.events.size() == 1);
+    CHECK_FALSE(snapshot.events[0].pressed);
+    CHECK(snapshot.events[0].timestamp_ns == 5);
+    CHECK(snapshot.pressed_keys.empty());
+}
+
+TEST_CASE("KeyboardInputState: closing one provider keeps a key another holds", "[unit][keyboard]")
+{
+    core::KeyboardTracker tracker;
+    auto a = tracker.create_provider("a");
+    auto b = tracker.create_provider("b");
+    a->key_down(KEY_W);
+    b->key_down(KEY_W);
+    tracker.input_state()->drain();
+
+    a->close();
+    auto snapshot = tracker.input_state()->drain();
+    CHECK(snapshot.events.empty());
+    CHECK(snapshot.pressed_keys == std::vector<uint16_t>{ KEY_W });
+
+    b->release_all();
+    snapshot = tracker.input_state()->drain();
+    CHECK(event_codes(snapshot, false) == std::vector<uint16_t>{ KEY_W });
+    CHECK(snapshot.pressed_keys.empty());
+}
+
+TEST_CASE("KeyboardInputState: a tap is hidden while another provider holds the key", "[unit][keyboard]")
+{
+    core::KeyboardTracker tracker;
+    auto window = tracker.create_provider("window");
+    auto hotkeys = tracker.create_provider("hotkeys");
+    window->key_down(KEY_K);
+    tracker.input_state()->drain();
+
+    CHECK_FALSE(hotkeys->tap(KEY_K));
+    auto snapshot = tracker.input_state()->drain();
+    CHECK(snapshot.events.empty());
+    CHECK(snapshot.pressed_keys == std::vector<uint16_t>{ KEY_K });
+
+    window->key_up(KEY_K);
+    tracker.input_state()->drain();
+    CHECK(hotkeys->tap(KEY_K));
+    snapshot = tracker.input_state()->drain();
+    CHECK(event_codes(snapshot, true) == std::vector<uint16_t>{ KEY_K });
+    CHECK(event_codes(snapshot, false) == std::vector<uint16_t>{ KEY_K });
 }
 
 TEST_CASE("KeyboardProvider: closing releases keys and detaches", "[unit][keyboard]")

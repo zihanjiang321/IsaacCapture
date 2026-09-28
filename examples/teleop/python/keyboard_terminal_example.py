@@ -248,10 +248,10 @@ def main():
             while time.monotonic() - start < args.duration:
                 terminal.poll()
                 result = session.step()
-                if not result["keyboard_all_keys"].is_none:
+                if not result["keyboard_held"].is_none:
                     pressed = np.flatnonzero(np.asarray(result["keyboard_pressed"][0]))
                     held = np.flatnonzero(
-                        np.asarray(result["keyboard_all_keys"][0])
+                        np.asarray(result["keyboard_held"][0])
                     ).tolist()
                     for code in pressed:
                         print(f"pressed: {_key_name(int(code))}", flush=True)

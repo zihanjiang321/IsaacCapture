@@ -98,7 +98,7 @@ class TestKeyboardToSe3RelRetargeter:
             KeyboardToSe3RelRetargeterConfig(), name="se3"
         )
         out = {"ee_delta": _make_output_group(retargeter.output_spec()["ee_delta"])}
-        retargeter.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, out)
+        retargeter.compute({"keyboard_held": src_outputs["keyboard_held"]}, out)
 
         delta = np.asarray(out["ee_delta"][0])
         assert delta[0] == pytest.approx(0.4)  # default pos_sensitivity
@@ -113,7 +113,7 @@ class TestKeyboardToSe3RelRetargeter:
             KeyboardToSe3RelRetargeterConfig(), name="se3"
         )
         out = {"ee_delta": _make_output_group(retargeter.output_spec()["ee_delta"])}
-        retargeter.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, out)
+        retargeter.compute({"keyboard_held": src_outputs["keyboard_held"]}, out)
 
         delta = np.asarray(out["ee_delta"][0])
         assert delta[0] == pytest.approx(0.4)  # W: +X
@@ -127,7 +127,7 @@ class TestKeyboardToSe3RelRetargeter:
 
         se3 = KeyboardToSe3RelRetargeter(KeyboardToSe3RelRetargeterConfig(), name="se3")
         se3_out = {"ee_delta": _make_output_group(se3.output_spec()["ee_delta"])}
-        se3.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, se3_out)
+        se3.compute({"keyboard_held": src_outputs["keyboard_held"]}, se3_out)
         assert np.allclose(np.asarray(se3_out["ee_delta"][0]), 0.0)
 
 
@@ -180,7 +180,7 @@ class TestKeyboardToSe2Retargeter:
         out = {
             "base_command": _make_output_group(retargeter.output_spec()["base_command"])
         }
-        retargeter.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, out)
+        retargeter.compute({"keyboard_held": src_outputs["keyboard_held"]}, out)
 
         velocity = np.asarray(out["base_command"][0])
         assert velocity[0] == pytest.approx(0.8)  # default v_x_sensitivity
@@ -198,7 +198,7 @@ class TestKeyboardToSe2Retargeter:
         out = {
             "base_command": _make_output_group(retargeter.output_spec()["base_command"])
         }
-        retargeter.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, out)
+        retargeter.compute({"keyboard_held": src_outputs["keyboard_held"]}, out)
 
         velocity = np.asarray(out["base_command"][0])
         assert velocity[0] == pytest.approx(0.8)
@@ -214,6 +214,6 @@ class TestKeyboardToSe2Retargeter:
         out = {
             "base_command": _make_output_group(retargeter.output_spec()["base_command"])
         }
-        retargeter.compute({"keyboard_all_keys": src_outputs["keyboard_all_keys"]}, out)
+        retargeter.compute({"keyboard_held": src_outputs["keyboard_held"]}, out)
 
         assert np.allclose(np.asarray(out["base_command"][0]), 0.0)

@@ -16,7 +16,7 @@ from .pedals_source import Generic3AxisPedalSource
 # by W3C KeyboardEvent.code (EvdevKeyCode.KeyW) and valued by evdev code.
 from isaaccapture.deviceio_trackers import EvdevKeyCode
 from .keyboard_source import (
-    KeyboardAllKeysType,
+    KeyboardHeldType,
     KeyboardPressedType,
     KeyboardSource,
     KeyEventSource,
@@ -64,7 +64,7 @@ __all__ = [
     "ControllersSource",
     "Generic3AxisPedalSource",
     "EvdevKeyCode",
-    "KeyboardAllKeysType",
+    "KeyboardHeldType",
     "KeyboardPressedType",
     "KeyboardSource",
     "KeyEventSource",

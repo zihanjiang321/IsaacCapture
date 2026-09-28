@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from isaaccapture.retargeting_engine.deviceio_source_nodes import (
     EvdevKeyCode,
-    KeyboardAllKeysType,
+    KeyboardHeldType,
     KeyboardPressedType,
 )
 from isaaccapture.retargeting_engine.interface import (
@@ -58,7 +58,7 @@ class KeyboardToSe3RelRetargeter(BaseRetargeter):
         super().__init__(name=name)
 
     def input_spec(self) -> RetargeterIOType:
-        return {"keyboard_all_keys": OptionalType(KeyboardAllKeysType())}
+        return {"keyboard_held": OptionalType(KeyboardHeldType())}
 
     def output_spec(self) -> RetargeterIOType:
         return {
@@ -74,12 +74,12 @@ class KeyboardToSe3RelRetargeter(BaseRetargeter):
 
     def _compute_fn(self, inputs: RetargeterIO, outputs: RetargeterIO, context) -> None:
         ee_delta = outputs["ee_delta"]
-        all_keys = inputs["keyboard_all_keys"]
-        if all_keys.is_none:
+        held_keys = inputs["keyboard_held"]
+        if held_keys.is_none:
             ee_delta[0] = np.zeros(6, dtype=np.float32)
             return
 
-        bitmap = np.asarray(all_keys[0])
+        bitmap = np.asarray(held_keys[0])
         pos_sens = self._config.pos_sensitivity
         rot_sens = self._config.rot_sensitivity
 

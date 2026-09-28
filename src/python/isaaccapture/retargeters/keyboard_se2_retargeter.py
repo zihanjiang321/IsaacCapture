@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from isaaccapture.retargeting_engine.deviceio_source_nodes import (
     EvdevKeyCode,
-    KeyboardAllKeysType,
+    KeyboardHeldType,
 )
 from isaaccapture.retargeting_engine.interface import (
     BaseRetargeter,
@@ -44,7 +44,7 @@ class KeyboardToSe2Retargeter(BaseRetargeter):
         Numpad 4 / Arrow Left: +v_y      Numpad 6 / Arrow Right: -v_y
         Numpad 7 / Z: +omega_z           Numpad 9 / X: -omega_z
 
-    Consumes the "keyboard_all_keys" bitmap (rather than the fixed 13-key SE3
+    Consumes the "keyboard_held" bitmap (rather than the fixed 13-key SE3
     subset) since numpad and arrow keys fall outside it.
 
     Output is the instantaneous command implied by the currently held keys (scaled
@@ -57,7 +57,7 @@ class KeyboardToSe2Retargeter(BaseRetargeter):
         super().__init__(name=name)
 
     def input_spec(self) -> RetargeterIOType:
-        return {"keyboard_all_keys": OptionalType(KeyboardAllKeysType())}
+        return {"keyboard_held": OptionalType(KeyboardHeldType())}
 
     def output_spec(self) -> RetargeterIOType:
         return {
@@ -73,12 +73,12 @@ class KeyboardToSe2Retargeter(BaseRetargeter):
 
     def _compute_fn(self, inputs: RetargeterIO, outputs: RetargeterIO, context) -> None:
         base_command = outputs["base_command"]
-        all_keys = inputs["keyboard_all_keys"]
-        if all_keys.is_none:
+        held_keys = inputs["keyboard_held"]
+        if held_keys.is_none:
             base_command[0] = np.zeros(3, dtype=np.float32)
             return
 
-        bitmap = np.asarray(all_keys[0])
+        bitmap = np.asarray(held_keys[0])
         v_x_sens = self._config.v_x_sensitivity
         v_y_sens = self._config.v_y_sensitivity
         omega_z_sens = self._config.omega_z_sensitivity

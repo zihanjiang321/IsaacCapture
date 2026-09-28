@@ -128,7 +128,7 @@ void KeyboardInputState::remove_provider(uint64_t provider_id, int64_t timestamp
     }
     for (uint16_t code : it->second)
     {
-        push_event_locked({ timestamp_ns, code, false });
+        release_locked(code, timestamp_ns);
     }
     held_by_provider_.erase(it);
 }
@@ -141,7 +141,7 @@ bool KeyboardInputState::key_down(uint64_t provider_id, uint16_t code, int64_t t
     {
         return false;
     }
-    push_event_locked({ timestamp_ns, code, true });
+    press_locked(code, timestamp_ns);
     return true;
 }
 
@@ -153,7 +153,7 @@ bool KeyboardInputState::key_up(uint64_t provider_id, uint16_t code, int64_t tim
     {
         return false;
     }
-    push_event_locked({ timestamp_ns, code, false });
+    release_locked(code, timestamp_ns);
     return true;
 }
 
@@ -161,7 +161,7 @@ bool KeyboardInputState::tap(uint64_t provider_id, uint16_t code, int64_t timest
 {
     std::lock_guard<std::mutex> lock(mutex_);
     const auto it = held_by_provider_.find(provider_id);
-    if (it == held_by_provider_.end() || it->second.count(code) != 0)
+    if (it == held_by_provider_.end() || holders_.count(code) != 0)
     {
         return false;
     }
@@ -180,21 +180,37 @@ void KeyboardInputState::release_all(uint64_t provider_id, int64_t timestamp_ns)
     }
     for (uint16_t code : it->second)
     {
-        push_event_locked({ timestamp_ns, code, false });
+        release_locked(code, timestamp_ns);
     }
     it->second.clear();
+}
+
+void KeyboardInputState::press_locked(uint16_t code, int64_t timestamp_ns)
+{
+    if (++holders_[code] == 1)
+    {
+        push_event_locked({ timestamp_ns, code, true });
+    }
+}
+
+void KeyboardInputState::release_locked(uint16_t code, int64_t timestamp_ns)
+{
+    const auto it = holders_.find(code);
+    if (--it->second == 0)
+    {
+        holders_.erase(it);
+        push_event_locked({ timestamp_ns, code, false });
+    }
 }
 
 KeyboardInputState::Snapshot KeyboardInputState::drain()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     Snapshot snapshot;
-    std::set<uint16_t> held;
-    for (const auto& [id, keys] : held_by_provider_)
+    for (const auto& [code, holders] : holders_)
     {
-        held.insert(keys.begin(), keys.end());
+        snapshot.pressed_keys.push_back(code);
     }
-    snapshot.pressed_keys.assign(held.begin(), held.end());
     snapshot.events = std::exchange(pending_, {});
     snapshot.provider_count = held_by_provider_.size();
     return snapshot;

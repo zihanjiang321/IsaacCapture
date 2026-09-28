@@ -28,7 +28,7 @@ KEY_W, KEY_K = 17, 37
 
 
 def _held(result):
-    return np.flatnonzero(np.asarray(result["keyboard_all_keys"][0])).tolist()
+    return np.flatnonzero(np.asarray(result["keyboard_held"][0])).tolist()
 
 
 def _pressed(result):

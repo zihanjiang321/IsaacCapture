@@ -73,7 +73,7 @@ class KeyEventSource(Protocol):
 
 
 # One entry per Linux evdev key code; providers reject codes outside this range.
-ALL_KEYS_BITMAP_SIZE = KEYBOARD_KEY_CODE_COUNT
+KEY_BITMAP_SIZE = KEYBOARD_KEY_CODE_COUNT
 
 
 def _key_bitmap_type(name: str) -> TensorGroupType:
@@ -82,7 +82,7 @@ def _key_bitmap_type(name: str) -> TensorGroupType:
         [
             NDArrayType(
                 "bitmap",
-                shape=(ALL_KEYS_BITMAP_SIZE,),
+                shape=(KEY_BITMAP_SIZE,),
                 dtype=DLDataType.UINT,
                 dtype_bits=8,
             )
@@ -90,9 +90,9 @@ def _key_bitmap_type(name: str) -> TensorGroupType:
     )
 
 
-def KeyboardAllKeysType() -> TensorGroupType:
-    """Type for "keyboard_all_keys": keys held at the end of the frame, indexed by evdev code."""
-    return _key_bitmap_type("keyboard_all_keys")
+def KeyboardHeldType() -> TensorGroupType:
+    """Type for "keyboard_held": keys held at the end of the frame, indexed by evdev code."""
+    return _key_bitmap_type("keyboard_held")
 
 
 def KeyboardPressedType() -> TensorGroupType:
@@ -112,7 +112,7 @@ class KeyboardSource(IDeviceIOSource):
         - "deviceio_keyboard": KeyboardOutput from the source's KeyboardTracker
 
     Outputs (Optional -- absent while no provider is attached):
-        - "keyboard_all_keys": uint8 bitmap, 1 = held at the end of the frame
+        - "keyboard_held": uint8 bitmap, 1 = held at the end of the frame
         - "keyboard_pressed": uint8 bitmap, 1 = pressed at least once this frame
 
     Usage:
@@ -214,7 +214,7 @@ class KeyboardSource(IDeviceIOSource):
     def output_spec(self) -> RetargeterIOType:
         """Declare the held and pressed bitmaps (Optional -- absent without a provider)."""
         return {
-            "keyboard_all_keys": OptionalType(KeyboardAllKeysType()),
+            "keyboard_held": OptionalType(KeyboardHeldType()),
             "keyboard_pressed": OptionalType(KeyboardPressedType()),
         }
 
@@ -229,22 +229,22 @@ class KeyboardSource(IDeviceIOSource):
 
         keys: KeyboardOutput | None = inputs["deviceio_keyboard"][0]
 
-        all_keys_out = outputs["keyboard_all_keys"]
+        held_out = outputs["keyboard_held"]
         pressed_out = outputs["keyboard_pressed"]
         if keys is None:
-            all_keys_out.set_none()
+            held_out.set_none()
             pressed_out.set_none()
             return
 
-        held = np.zeros(ALL_KEYS_BITMAP_SIZE, dtype=np.uint8)
+        held = np.zeros(KEY_BITMAP_SIZE, dtype=np.uint8)
         for code in keys.pressed_keys:
-            if code < ALL_KEYS_BITMAP_SIZE:
+            if code < KEY_BITMAP_SIZE:
                 held[code] = 1
 
-        pressed = np.zeros(ALL_KEYS_BITMAP_SIZE, dtype=np.uint8)
+        pressed = np.zeros(KEY_BITMAP_SIZE, dtype=np.uint8)
         for event in keys.events:
-            if event.action == KeyAction.PRESS and event.code < ALL_KEYS_BITMAP_SIZE:
+            if event.action == KeyAction.PRESS and event.code < KEY_BITMAP_SIZE:
                 pressed[event.code] = 1
 
-        all_keys_out[0] = held
+        held_out[0] = held
         pressed_out[0] = pressed

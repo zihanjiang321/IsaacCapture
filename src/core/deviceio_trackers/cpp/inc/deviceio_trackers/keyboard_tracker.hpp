@@ -46,7 +46,9 @@ std::optional<std::string_view> w3c_code_from_evdev(uint16_t evdev_code);
  *
  * Providers report transitions from whatever thread their surface delivers events on;
  * the tracker impl drains once per frame on the session thread. Held keys are kept per
- * provider so one surface losing focus releases only its own keys.
+ * provider so one surface losing focus releases only its own keys. Events describe the merged
+ * keyboard: a press is logged when the first provider takes a key and a release when the last
+ * one lets go, so the event log always agrees with the held snapshot.
  */
 class KeyboardInputState
 {
@@ -61,7 +63,7 @@ public:
     struct Snapshot
     {
         std::vector<uint16_t> pressed_keys; //!< Union of every provider's held keys, sorted.
-        std::vector<Event> events; //!< Transitions since the previous drain, in report order.
+        std::vector<Event> events; //!< Merged-keyboard transitions since the previous drain, in order.
         std::size_t provider_count; //!< Providers open at drain time.
     };
 
@@ -72,11 +74,13 @@ public:
     //! Releases the provider's held keys, then forgets it.
     void remove_provider(uint64_t provider_id, int64_t timestamp_ns);
 
-    //! Returns false when the transition changes nothing (autorepeat, or releasing an unheld key).
+    //! Returns false when the provider's own state does not change (autorepeat, or releasing an
+    //! unheld key). A change hidden by another provider holding the same key returns true but
+    //! logs no event.
     bool key_down(uint64_t provider_id, uint16_t code, int64_t timestamp_ns);
     bool key_up(uint64_t provider_id, uint16_t code, int64_t timestamp_ns);
     //! Press and release in one step, for surfaces that report presses only. A no-op returning
-    //! false when the provider already holds the key, so a tap never releases a real hold.
+    //! false while any provider holds the key, so a tap never releases a real hold.
     bool tap(uint64_t provider_id, uint16_t code, int64_t timestamp_ns);
     void release_all(uint64_t provider_id, int64_t timestamp_ns);
 
@@ -84,9 +88,12 @@ public:
 
 private:
     void push_event_locked(const Event& event);
+    void press_locked(uint16_t code, int64_t timestamp_ns);
+    void release_locked(uint16_t code, int64_t timestamp_ns);
 
     mutable std::mutex mutex_;
     std::map<uint64_t, std::set<uint16_t>> held_by_provider_;
+    std::map<uint16_t, std::size_t> holders_; //!< Providers holding each key; absent = released.
     std::vector<Event> pending_;
     uint64_t next_provider_id_ = 1;
 };
