@@ -4,10 +4,12 @@
 """
 SpaceMouse Source Node - DeviceIO to Retargeting Engine converter.
 
-Converts raw SpaceMouseOutput flatbuffer data (3Dconnexion HID axis/button state) to
-three standard outputs: translation axes, rotation axes, and a button-press bitmap.
-Carries no semantic mapping -- which axis/button means what (a position delta, a
-rotation delta, a toggle) is entirely up to the consuming retargeter.
+Reads a 3Dconnexion SpaceMouse in process from its HID device (no plugin, no OpenXR
+runtime) and converts its raw SpaceMouseOutput (axis/button state) to three standard
+outputs: translation axes, rotation axes, and a button-press bitmap. Carries no semantic
+mapping -- which axis/button means what (a position delta, a rotation delta, a toggle) is
+entirely up to the consuming retargeter. Reading ``/dev/hidraw*`` needs a udev rule granting
+the user access.
 """
 
 from __future__ import annotations
@@ -22,16 +24,13 @@ from .deviceio_tensor_types import DeviceIOSpaceMouseOutputTracked
 from .interface import IDeviceIOSource
 
 if TYPE_CHECKING:
-    from isaacteleop.deviceio import ITracker
-    from isaacteleop.schema import SpaceMouseOutput
-
-# Default collection_id matching the spacemouse plugin and SpaceMouseTracker.
-DEFAULT_SPACEMOUSE_COLLECTION_ID = "spacemouse"
+    from isaaccapture.deviceio import ITracker
+    from isaaccapture.schema import SpaceMouseOutput
 
 # Fixed axis-array size for both translation and rotation: [x, y, z].
 SPACEMOUSE_AXES_SIZE = 3
 
-# Button bitmap size: covers every bit position the plugin's button-report byte can set.
+# Button bitmap size: covers every bit position the device's button-report byte can set.
 SPACEMOUSE_BUTTONS_BITMAP_SIZE = 8
 
 
@@ -87,7 +86,7 @@ class SpaceMouseSource(IDeviceIOSource):
     Inputs:
         - "deviceio_spacemouse": Raw SpaceMouseOutput flatbuffer from SpaceMouseTracker
 
-    Outputs (Optional — absent when the spacemouse plugin has not yet streamed):
+    Outputs (Optional — absent while no SpaceMouse is connected):
         - "spacemouse_translation": OptionalTensorGroup, a 3-entry float32 [x, y, z]
           array in [-1, 1].
         - "spacemouse_rotation": OptionalTensorGroup, a 3-entry float32 [x, y, z]
@@ -105,7 +104,10 @@ class SpaceMouseSource(IDeviceIOSource):
     """
 
     def __init__(
-        self, name: str, collection_id: str = DEFAULT_SPACEMOUSE_COLLECTION_ID
+        self,
+        name: str,
+        device_path: str | None = None,
+        combined_report: bool = False,
     ) -> None:
         """Initialize stateless spacemouse source node.
 
@@ -113,12 +115,16 @@ class SpaceMouseSource(IDeviceIOSource):
 
         Args:
             name: Unique name for this source node
-            collection_id: Tensor collection ID for spacemouse data (must match the spacemouse plugin).
+            device_path: HID device to read (e.g. ``/dev/hidraw3``). ``None`` picks the first
+                connected SpaceMouse of a validated model, and picks again after a disconnect.
+            combined_report: Only used with an explicit ``device_path``: the device packs
+                translation and rotation into one report (3Dconnexion Universal Receiver).
         """
-        import isaacteleop.deviceio as deviceio
+        import isaaccapture.deviceio as deviceio
 
-        self._spacemouse_tracker = deviceio.SpaceMouseTracker(collection_id)
-        self._collection_id = collection_id
+        self._spacemouse_tracker = deviceio.SpaceMouseTracker(
+            device_path or "", combined_report
+        )
         super().__init__(name)
 
     def get_tracker(self) -> ITracker:
@@ -161,8 +167,7 @@ class SpaceMouseSource(IDeviceIOSource):
         """
         Convert DeviceIO SpaceMouseOutput to the standard spacemouse outputs.
 
-        Calls ``set_none()`` on all three outputs when the spacemouse plugin has not
-        yet streamed.
+        Calls ``set_none()`` on all three outputs while no SpaceMouse is connected.
 
         Args:
             inputs: Dict with "deviceio_spacemouse" containing SpaceMouseOutput | None

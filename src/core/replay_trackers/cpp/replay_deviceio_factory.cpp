@@ -11,6 +11,7 @@
 #include "replay_head_tracker_impl.hpp"
 #include "replay_keyboard_tracker_impl.hpp"
 #include "replay_message_channel_tracker_impl.hpp"
+#include "replay_spacemouse_tracker_impl.hpp"
 #include "replay_tensor_push_tracker_impl.hpp"
 
 #include <deviceio_trackers/controller_tracker.hpp>
@@ -20,6 +21,7 @@
 #include <deviceio_trackers/head_tracker.hpp>
 #include <deviceio_trackers/keyboard_tracker.hpp>
 #include <deviceio_trackers/message_channel_tracker.hpp>
+#include <deviceio_trackers/spacemouse_tracker.hpp>
 #include <deviceio_trackers/tensor_push_tracker.hpp>
 #include <mcap/reader.hpp>
 
@@ -114,6 +116,12 @@ std::unique_ptr<ITrackerImpl> try_create_keyboard_impl(ReplayDeviceIOFactory& fa
     return typed ? factory.create_keyboard_tracker_impl(typed) : nullptr;
 }
 
+std::unique_ptr<ITrackerImpl> try_create_spacemouse_impl(ReplayDeviceIOFactory& factory, const ITracker& tracker)
+{
+    auto* typed = dynamic_cast<const SpaceMouseTracker*>(&tracker);
+    return typed ? factory.create_spacemouse_tracker_impl(typed) : nullptr;
+}
+
 #include "generated_replay_try_create.inc"
 
 using TryCreateFn = std::unique_ptr<ITrackerImpl> (*)(ReplayDeviceIOFactory&, const ITracker&);
@@ -128,6 +136,7 @@ inline const TryCreateFn k_tracker_dispatch[] = {
     &try_create_tensor_push_impl,
     &try_create_message_channel_impl,
     &try_create_keyboard_impl,
+    &try_create_spacemouse_impl,
 };
 
 } // namespace
@@ -210,6 +219,11 @@ std::unique_ptr<IKeyboardTrackerImpl> ReplayDeviceIOFactory::create_keyboard_tra
 {
     return std::make_unique<ReplayKeyboardTrackerImpl>(
         open_reader(filename_), get_name(tracker), recorded_schemas_, tracker->input_state());
+}
+
+std::unique_ptr<ISpaceMouseTrackerImpl> ReplayDeviceIOFactory::create_spacemouse_tracker_impl(const SpaceMouseTracker* tracker)
+{
+    return std::make_unique<ReplaySpaceMouseTrackerImpl>(open_reader(filename_), get_name(tracker), recorded_schemas_);
 }
 
 #include "generated_replay_factory_methods.inc"

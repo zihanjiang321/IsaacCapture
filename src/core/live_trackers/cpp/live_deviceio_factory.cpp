@@ -13,6 +13,7 @@
 #include "live_head_tracker_impl.hpp"
 #include "live_keyboard_tracker_impl.hpp"
 #include "live_message_channel_tracker_impl.hpp"
+#include "live_spacemouse_tracker_impl.hpp"
 #include "live_tensor_push_tracker_impl.hpp"
 
 #include <deviceio_trackers/controller_tracker.hpp>
@@ -22,6 +23,7 @@
 #include <deviceio_trackers/head_tracker.hpp>
 #include <deviceio_trackers/keyboard_tracker.hpp>
 #include <deviceio_trackers/message_channel_tracker.hpp>
+#include <deviceio_trackers/spacemouse_tracker.hpp>
 #include <deviceio_trackers/tensor_push_tracker.hpp>
 #include <oxr_utils/oxr_time.hpp>
 
@@ -134,6 +136,12 @@ std::unique_ptr<ITrackerImpl> try_create_keyboard_impl(LiveDeviceIOFactory& fact
     return typed ? factory.create_keyboard_tracker_impl(typed) : nullptr;
 }
 
+std::unique_ptr<ITrackerImpl> try_create_spacemouse_impl(LiveDeviceIOFactory& factory, const ITracker& tracker)
+{
+    auto* typed = dynamic_cast<const SpaceMouseTracker*>(&tracker);
+    return typed ? factory.create_spacemouse_tracker_impl(typed) : nullptr;
+}
+
 #include "generated_live_try_create.inc"
 
 using CollectExtensionsFn = bool (*)(const ITracker&, std::set<std::string>&);
@@ -183,6 +191,7 @@ inline const TrackerDispatchEntry k_tracker_dispatch[] = {
     make_dispatch_entry<HapticCommandReaderTracker, LiveHapticCommandReaderTrackerImpl>(
         &try_create_haptic_command_reader_impl),
     make_dispatch_entry<KeyboardTracker, LiveKeyboardTrackerImpl>(&try_create_keyboard_impl),
+    make_dispatch_entry<SpaceMouseTracker, LiveSpaceMouseTrackerImpl>(&try_create_spacemouse_impl),
 // Manifest trackers are single-vendor, so their rows can sit last as a block.
 #include "generated_live_dispatch_rows.inc"
 };
@@ -552,6 +561,17 @@ std::unique_ptr<IKeyboardTrackerImpl> LiveDeviceIOFactory::create_keyboard_track
         channels = LiveKeyboardTrackerImpl::create_mcap_channels(*writer_, get_name(tracker));
     }
     return std::make_unique<LiveKeyboardTrackerImpl>(tracker->input_state(), std::move(channels));
+}
+
+std::unique_ptr<ISpaceMouseTrackerImpl> LiveDeviceIOFactory::create_spacemouse_tracker_impl(const SpaceMouseTracker* tracker)
+{
+    std::unique_ptr<SpaceMouseMcapChannels> channels;
+    if (should_record(tracker))
+    {
+        channels = LiveSpaceMouseTrackerImpl::create_mcap_channels(*writer_, get_name(tracker));
+    }
+    return std::make_unique<LiveSpaceMouseTrackerImpl>(
+        tracker->device_path(), tracker->combined_report(), std::move(channels));
 }
 
 #include "generated_live_factory_methods.inc"

@@ -11,10 +11,10 @@ bitmap, with no OpenXR device involved.
 import numpy as np
 import pytest
 
-from isaacteleop.retargeting_engine.deviceio_source_nodes import SpaceMouseSource
-from isaacteleop.retargeting_engine.interface.base_retargeter import _make_output_group
-from isaacteleop.retargeting_engine.interface.tensor_group import TensorGroup
-from isaacteleop.schema import SpaceMouseOutput
+from isaaccapture.retargeting_engine.deviceio_source_nodes import SpaceMouseSource
+from isaaccapture.retargeting_engine.interface.base_retargeter import _make_output_group
+from isaaccapture.retargeting_engine.interface.tensor_group import TensorGroup
+from isaaccapture.schema import SpaceMouseOutput
 
 BUTTON_LEFT = 0
 BUTTON_RIGHT = 1

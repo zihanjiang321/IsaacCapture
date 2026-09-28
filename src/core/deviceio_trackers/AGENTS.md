@@ -38,9 +38,10 @@ under `${CMAKE_BINARY_DIR}/generated/trackers/`, **not** in `cpp/`.
 **Still hand-written:** the `.fbs` schema and its `schema/python/*_bindings.h` pybind file (codegen
 starts at the tracker layer, not the schema layer); `head`, `hand`, `controller`, `full_body`,
 `message_channel`, `HapticCommandReaderTracker` (multi-sample bucketing by
-`HapticCommand.endpoint` on one push-tensor collection), and `keyboard` (in-process: the facade
+`HapticCommand.endpoint` on one push-tensor collection), `keyboard` (in-process: the facade
 owns `KeyboardInputState` that host-side `KeyboardProvider`s feed, and the live impl needs no
-OpenXR — neither fits a generated shape).
+OpenXR — neither fits a generated shape), and `spacemouse` (in-process: the live impl reads the
+3Dconnexion HID device itself and needs no OpenXR or plugin).
 
 ## No OpenXR dependency
 

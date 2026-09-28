@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for SpaceMouseOutput type in isaacteleop.schema.
+"""Unit tests for SpaceMouseOutput type in isaaccapture.schema.
 
 Tests the following FlatBuffers types:
 - SpaceMouseOutput: Table with translation, rotation, pressed_buttons, is_valid
@@ -12,7 +12,7 @@ Timestamps are carried by SpaceMouseOutputRecord, not SpaceMouseOutput.
 
 import pytest
 
-from isaacteleop.schema import (
+from isaaccapture.schema import (
     DeviceDataTimestamp,
     SpaceMouseOutput,
     SpaceMouseOutputRecord,
