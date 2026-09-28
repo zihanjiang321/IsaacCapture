@@ -11,17 +11,17 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from isaacteleop.retargeting_engine.deviceio_source_nodes import GamepadAxesType
-from isaacteleop.retargeting_engine.interface import (
+from isaaccapture.retargeting_engine.deviceio_source_nodes import GamepadAxesType
+from isaaccapture.retargeting_engine.interface import (
     BaseRetargeter,
     RetargeterIOType,
 )
-from isaacteleop.retargeting_engine.interface.retargeter_core_types import RetargeterIO
-from isaacteleop.retargeting_engine.interface.tensor_group_type import (
+from isaaccapture.retargeting_engine.interface.retargeter_core_types import RetargeterIO
+from isaaccapture.retargeting_engine.interface.tensor_group_type import (
     OptionalType,
     TensorGroupType,
 )
-from isaacteleop.retargeting_engine.tensor_types import DLDataType, NDArrayType
+from isaaccapture.retargeting_engine.tensor_types import DLDataType, NDArrayType
 
 # Linux joystick-API axis indices for a typical Xbox-style pad under the xpad driver.
 # Axis convention: pushing a stick left/up reports a negative value, right/down positive

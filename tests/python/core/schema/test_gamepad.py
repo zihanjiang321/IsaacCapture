@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for GamepadOutput type in isaacteleop.schema.
+"""Unit tests for GamepadOutput type in isaaccapture.schema.
 
 Tests the following FlatBuffers types:
 - GamepadOutput: Table with pressed_buttons (joystick button indices) and axes
@@ -12,7 +12,7 @@ Timestamps are carried by GamepadOutputRecord, not GamepadOutput.
 
 import pytest
 
-from isaacteleop.schema import DeviceDataTimestamp, GamepadOutput, GamepadOutputRecord
+from isaaccapture.schema import DeviceDataTimestamp, GamepadOutput, GamepadOutputRecord
 
 
 class TestGamepadOutputConstruction:

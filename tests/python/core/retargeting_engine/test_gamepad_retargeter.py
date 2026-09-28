@@ -10,21 +10,21 @@ here, with no OpenXR device involved.
 import numpy as np
 import pytest
 
-from isaacteleop.retargeting_engine.deviceio_source_nodes import GamepadSource
-from isaacteleop.retargeting_engine.interface.base_retargeter import _make_output_group
-from isaacteleop.retargeting_engine.interface.execution_events import ExecutionEvents
-from isaacteleop.retargeting_engine.interface.retargeter_core_types import (
+from isaaccapture.retargeting_engine.deviceio_source_nodes import GamepadSource
+from isaaccapture.retargeting_engine.interface.base_retargeter import _make_output_group
+from isaaccapture.retargeting_engine.interface.execution_events import ExecutionEvents
+from isaaccapture.retargeting_engine.interface.retargeter_core_types import (
     ComputeContext,
 )
-from isaacteleop.retargeting_engine.interface.tensor_group import TensorGroup
-from isaacteleop.retargeters import (
+from isaaccapture.retargeting_engine.interface.tensor_group import TensorGroup
+from isaaccapture.retargeters import (
     GamepadGripperRetargeter,
     GamepadToSe2Retargeter,
     GamepadToSe2RetargeterConfig,
     GamepadToSe3RelRetargeter,
     GamepadToSe3RelRetargeterConfig,
 )
-from isaacteleop.schema import GamepadOutput
+from isaaccapture.schema import GamepadOutput
 
 # Linux joystick-API axis indices, matching gamepad_plugin.cpp / GamepadSource / the retargeters.
 AXIS_LEFT_X, AXIS_LEFT_Y = 0, 1

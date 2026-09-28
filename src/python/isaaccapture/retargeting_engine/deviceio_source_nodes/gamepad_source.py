@@ -4,10 +4,11 @@
 """
 Gamepad Source Node - DeviceIO to Retargeting Engine converter.
 
-Converts raw GamepadOutput flatbuffer data (Linux joystick-API button/axis state) to
-two standard outputs: a button-press bitmap and an axis-value array. Carries no
-semantic mapping -- which button/axis means what (a stick, a trigger, a toggle) is
-entirely up to the consuming retargeter.
+Reads a Linux joystick-API gamepad in process (no plugin, no OpenXR runtime, no ``input``
+group membership) and converts its raw GamepadOutput (button/axis state) to two standard
+outputs: a button-press bitmap and an axis-value array. Carries no semantic mapping -- which
+button/axis means what (a stick, a trigger, a toggle) is entirely up to the consuming
+retargeter.
 """
 
 from __future__ import annotations
@@ -22,18 +23,15 @@ from .deviceio_tensor_types import DeviceIOGamepadOutputTracked
 from .interface import IDeviceIOSource
 
 if TYPE_CHECKING:
-    from isaacteleop.deviceio import ITracker
-    from isaacteleop.schema import GamepadOutput
-
-# Default collection_id matching the gamepad plugin and GamepadTracker.
-DEFAULT_GAMEPAD_COLLECTION_ID = "gamepad"
+    from isaaccapture.deviceio import ITracker
+    from isaaccapture.schema import GamepadOutput
 
 # Linux joystick JS_EVENT_BUTTON indices go up to 31 on every driver observed in
 # practice (Xbox-style pads report ~11); 32 covers the full range with headroom.
 GAMEPAD_BUTTONS_BITMAP_SIZE = 32
 
 # Fixed axis-array size returned to consumers, independent of how many axes the
-# connected device actually reports (GamepadPlugin queries JSIOCGAXES and reports
+# connected device actually reports (the tracker queries JSIOCGAXES and reports
 # fewer/more; this source pads with 0.0 or truncates to fit).
 GAMEPAD_AXES_SIZE = 8
 
@@ -75,7 +73,7 @@ class GamepadSource(IDeviceIOSource):
     Inputs:
         - "deviceio_gamepad": Raw GamepadOutput flatbuffer from GamepadTracker
 
-    Outputs (Optional — absent when the gamepad plugin has not yet streamed):
+    Outputs (Optional — absent while no gamepad is connected):
         - "gamepad_buttons": OptionalTensorGroup, a 32-entry uint8 bitmap indexed by
           Linux joystick button number (1 = held, 0 = released).
         - "gamepad_axes": OptionalTensorGroup, a fixed-size float32 array of axis
@@ -91,21 +89,19 @@ class GamepadSource(IDeviceIOSource):
         })
     """
 
-    def __init__(
-        self, name: str, collection_id: str = DEFAULT_GAMEPAD_COLLECTION_ID
-    ) -> None:
+    def __init__(self, name: str, device_path: str | None = None) -> None:
         """Initialize stateless gamepad source node.
 
         Creates a GamepadTracker instance for TeleopSession to discover and use.
 
         Args:
             name: Unique name for this source node
-            collection_id: Tensor collection ID for gamepad data (must match the gamepad plugin).
+            device_path: Joystick device to read (e.g. ``/dev/input/js0``). ``None`` picks the
+                first connected joystick, and picks again after a disconnect.
         """
-        import isaacteleop.deviceio as deviceio
+        import isaaccapture.deviceio as deviceio
 
-        self._gamepad_tracker = deviceio.GamepadTracker(collection_id)
-        self._collection_id = collection_id
+        self._gamepad_tracker = deviceio.GamepadTracker(device_path or "")
         super().__init__(name)
 
     def get_tracker(self) -> ITracker:
@@ -147,8 +143,7 @@ class GamepadSource(IDeviceIOSource):
         """
         Convert DeviceIO GamepadOutput to the standard gamepad outputs.
 
-        Calls ``set_none()`` on both outputs when the gamepad plugin has not yet
-        streamed.
+        Calls ``set_none()`` on both outputs while no gamepad is connected.
 
         Args:
             inputs: Dict with "deviceio_gamepad" containing GamepadOutput | None
