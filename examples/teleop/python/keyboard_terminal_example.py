@@ -115,11 +115,16 @@ class TerminalKeySource:
         return self
 
     def __exit__(self, *exc):
-        self._release_all()
-        if self.kitty:
-            self._write(b"\x1b[<u")
-        self._write(b"\x1b[?1004l")
-        termios.tcsetattr(self._fd, termios.TCSADRAIN, self._saved_attrs)
+        # The input mode is restored whatever fails first; the protocol resets are best effort,
+        # so a closed stdout cannot replace an exception already propagating.
+        try:
+            self._release_all()
+        finally:
+            termios.tcsetattr(self._fd, termios.TCSADRAIN, self._saved_attrs)
+            resets = [b"\x1b[<u"] if self.kitty else []
+            for reset in [*resets, b"\x1b[?1004l"]:
+                with contextlib.suppress(OSError):
+                    self._write(reset)
         return False
 
     # Polling ----------------------------------------------------------------------

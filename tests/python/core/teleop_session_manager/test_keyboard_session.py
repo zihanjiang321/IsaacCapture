@@ -9,14 +9,16 @@ and host UI keyboard capture release held keys; press-only surfaces report taps)
 """
 
 import numpy as np
+import pytest
 
-from isaaccapture import deviceio
+from isaaccapture import deviceio, oxr
 from isaaccapture.deviceio_trackers import HeadTracker, KeyboardTracker
 from isaaccapture.retargeting_engine.deviceio_source_nodes import (
     FakeKeyEventSource,
     KeyboardSource,
 )
 from isaaccapture.teleop_session_manager import (
+    PluginConfig,
     SessionMode,
     TeleopSession,
     TeleopSessionConfig,
@@ -113,3 +115,57 @@ def test_keyboard_session_records_and_replays_without_openxr(tmp_path):
 
     assert live == [([KEY_W], [KEY_W]), ([KEY_W], [KEY_K]), ([], [])]
     assert replayed == live
+
+
+class _OpenXRConstructed(Exception):
+    pass
+
+
+def _forbid_openxr(monkeypatch):
+    def refuse(*args, **kwargs):
+        raise _OpenXRConstructed
+
+    monkeypatch.setattr(oxr, "OpenXRSession", refuse)
+
+
+def _plugin(name, tmp_path, *, enabled, required):
+    return PluginConfig(
+        plugin_name=name,
+        plugin_root_id=f"/{name}",
+        search_paths=[tmp_path / "missing"],
+        enabled=enabled,
+        required=required,
+    )
+
+
+def test_disabled_plugins_do_not_require_openxr(monkeypatch, tmp_path):
+    _forbid_openxr(monkeypatch)
+    config = TeleopSessionConfig(
+        app_name="KeyboardDisabledPlugins",
+        pipeline=KeyboardSource(name="keyboard"),
+        plugins=[
+            _plugin("a", tmp_path, enabled=False, required=True),
+            _plugin("b", tmp_path, enabled=False, required=True),
+        ],
+    )
+
+    with TeleopSession(config) as session:
+        assert session.oxr_session is None
+        assert session.plugin_contexts == []
+
+
+def test_enabled_plugin_still_requires_openxr(monkeypatch, tmp_path):
+    """Any enabled plugin counts, even an optional one that later turns out to be missing."""
+    _forbid_openxr(monkeypatch)
+    config = TeleopSessionConfig(
+        app_name="KeyboardEnabledPlugin",
+        pipeline=KeyboardSource(name="keyboard"),
+        plugins=[
+            _plugin("a", tmp_path, enabled=False, required=True),
+            _plugin("b", tmp_path, enabled=True, required=False),
+        ],
+    )
+
+    with pytest.raises(_OpenXRConstructed):
+        with TeleopSession(config):
+            pass

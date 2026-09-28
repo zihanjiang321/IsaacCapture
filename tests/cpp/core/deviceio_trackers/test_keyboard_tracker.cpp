@@ -211,7 +211,26 @@ TEST_CASE("keyboard_key_codes: every key round-trips", "[unit][keyboard]")
         const auto name = core::w3c_code_from_evdev(key.evdev_code);
         REQUIRE(name.has_value());
         CHECK(core::evdev_code_from_w3c(*name) == key.evdev_code);
+        CHECK(key.evdev_code < core::kKeyboardKeyCodeCount);
     }
+}
+
+TEST_CASE("KeyboardProvider: codes above KEY_MAX are rejected", "[unit][keyboard]")
+{
+    core::KeyboardTracker tracker;
+    auto provider = tracker.create_provider("window");
+    constexpr uint16_t kFn = 464; // above 255, inside the evdev range
+    constexpr uint16_t kLast = core::kKeyboardKeyCodeCount - 1;
+
+    CHECK(provider->key_down(kFn));
+    CHECK(provider->key_down(std::string_view("Fn")) == false); // already held
+    CHECK(provider->key_down(kLast));
+    CHECK_FALSE(provider->key_down(core::kKeyboardKeyCodeCount));
+    CHECK_FALSE(provider->key_up(core::kKeyboardKeyCodeCount));
+    CHECK_FALSE(provider->tap(core::kKeyboardKeyCodeCount));
+
+    const auto snapshot = tracker.input_state()->drain();
+    CHECK(snapshot.pressed_keys == std::vector<uint16_t>{ kFn, kLast });
 }
 
 TEST_CASE("KeyboardProvider: tap reports a press and release without holding", "[unit][keyboard]")

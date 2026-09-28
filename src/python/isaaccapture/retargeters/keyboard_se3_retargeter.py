@@ -110,7 +110,8 @@ class KeyboardGripperRetargeter(BaseRetargeter):
 
     Consumes ``keyboard_pressed`` (keys with a press event this frame), so a tap shorter
     than a frame still toggles and a key held across frames or across a reset never
-    re-toggles -- no edge state to keep.
+    re-toggles -- no edge state to keep. Toggles at most once per frame: two taps within one
+    frame count as one.
 
     Output matches GripperRetargeter's convention: -1.0 when closed, 1.0 when open.
     """

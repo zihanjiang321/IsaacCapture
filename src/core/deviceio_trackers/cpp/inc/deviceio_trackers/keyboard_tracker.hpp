@@ -27,6 +27,10 @@ struct KeyCodeName
     uint16_t evdev_code;
 };
 
+//! Number of Linux evdev key codes (`KEY_CNT`, i.e. `KEY_MAX` 0x2ff + 1). Providers reject codes
+//! at or above it, so every accepted code indexes the keyboard key bitmaps.
+inline constexpr uint16_t kKeyboardKeyCodeCount = 0x300;
+
 //! Every key with both a W3C `KeyboardEvent.code` and an evdev code, from Chromium's key table.
 const std::vector<KeyCodeName>& keyboard_key_codes();
 
@@ -108,7 +112,8 @@ public:
     KeyboardProvider& operator=(KeyboardProvider&&) = delete;
 
     //! Timestamps default to the monotonic clock at call time.
-    //! Return false for a no-op transition or when the provider is closed.
+    //! Return false for a no-op transition, a code at or above kKeyboardKeyCodeCount, or when the
+    //! provider is closed.
     bool key_down(uint16_t evdev_code, std::optional<int64_t> timestamp_ns = std::nullopt);
     bool key_up(uint16_t evdev_code, std::optional<int64_t> timestamp_ns = std::nullopt);
 

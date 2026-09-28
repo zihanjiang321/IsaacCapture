@@ -227,7 +227,7 @@ KeyboardProvider::~KeyboardProvider()
 
 bool KeyboardProvider::key_down(uint16_t evdev_code, std::optional<int64_t> timestamp_ns)
 {
-    if (is_closed())
+    if (is_closed() || evdev_code >= kKeyboardKeyCodeCount)
     {
         return false;
     }
@@ -236,7 +236,7 @@ bool KeyboardProvider::key_down(uint16_t evdev_code, std::optional<int64_t> time
 
 bool KeyboardProvider::key_up(uint16_t evdev_code, std::optional<int64_t> timestamp_ns)
 {
-    if (is_closed())
+    if (is_closed() || evdev_code >= kKeyboardKeyCodeCount)
     {
         return false;
     }
@@ -257,7 +257,7 @@ bool KeyboardProvider::key_up(std::string_view w3c_code, std::optional<int64_t> 
 
 bool KeyboardProvider::tap(uint16_t evdev_code, std::optional<int64_t> timestamp_ns)
 {
-    if (is_closed())
+    if (is_closed() || evdev_code >= kKeyboardKeyCodeCount)
     {
         return false;
     }

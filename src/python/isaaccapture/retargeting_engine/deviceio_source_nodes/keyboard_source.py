@@ -7,8 +7,8 @@ Keyboard Source Node - in-process keyboard device for the retargeting engine.
 Keys reach Isaac Teleop from whatever surface the user has focused (a native window, a
 browser tab, ...) through :class:`KeyboardProvider` objects on the source's
 ``KeyboardTracker``. The tracker merges every provider, records to MCAP like any DeviceIO
-device, and this node converts each frame to two 256-entry bitmaps indexed by evdev key code
-(:class:`EvdevKeyCode`). Carries no semantic mapping: which keys mean what is up to the
+device, and this node converts each frame to two bitmaps indexed by evdev key code
+(:class:`EvdevKeyCode`), one entry per Linux key code (``KEYBOARD_KEY_CODE_COUNT``). Carries no semantic mapping: which keys mean what is up to the
 consuming retargeter.
 
 Hosts either drive a provider directly (``create_provider``) or hand the source any object
@@ -17,6 +17,7 @@ implementing :class:`KeyEventSource` (``attach``).
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any, Callable, Protocol, TYPE_CHECKING, runtime_checkable
 from .interface import IDeviceIOSource
 from ..interface.retargeter_core_types import RetargeterIO, RetargeterIOType
@@ -24,6 +25,7 @@ from ..interface.tensor_group import TensorGroup
 from ..tensor_types import NDArrayType, DLDataType
 from ..interface.tensor_group_type import OptionalType, TensorGroupType
 from .deviceio_tensor_types import DeviceIOKeyboardOutputTracked
+from isaaccapture.deviceio_trackers import KEYBOARD_KEY_CODE_COUNT
 
 if TYPE_CHECKING:
     from isaaccapture.deviceio_trackers import ITracker, KeyboardProvider
@@ -49,7 +51,10 @@ class KeyEventSource(Protocol):
     - A surface that cannot report releases (press-only hotkeys, a plain terminal) reports each
       keystroke as ``on_key(code, True)`` immediately followed by ``on_key(code, False)``: a
       tap that reaches ``keyboard_pressed`` but is never held.
-    - Callbacks may arrive on any thread.
+    - Callbacks may arrive on any thread, but one subscription's callbacks must run one at a
+      time, in the order the events happened: a key event from before a focus loss completes
+      before ``on_focus_lost()`` runs, never after it. A press delivered late stays held, and
+      the consumer cannot tell it apart from a real one.
     """
 
     supports_keyboard: bool
@@ -67,10 +72,8 @@ class KeyEventSource(Protocol):
         ...
 
 
-# Every standard PC keyboard key (letters, digits, function keys, navigation,
-# modifiers, numpad, punctuation) fits under evdev code 255; anything above that
-# is an exotic/vendor key not tracked here.
-ALL_KEYS_BITMAP_SIZE = 256
+# One entry per Linux evdev key code; providers reject codes outside this range.
+ALL_KEYS_BITMAP_SIZE = KEYBOARD_KEY_CODE_COUNT
 
 
 def _key_bitmap_type(name: str) -> TensorGroupType:
@@ -95,7 +98,8 @@ def KeyboardAllKeysType() -> TensorGroupType:
 def KeyboardPressedType() -> TensorGroupType:
     """Type for "keyboard_pressed": keys with at least one press event during the frame.
 
-    Catches taps shorter than a frame and gives toggles an edge without keeping state.
+    Catches taps shorter than a frame and gives toggles an edge without keeping state. A per-frame
+    edge: several presses of one key within a frame set the bit once.
     """
     return _key_bitmap_type("keyboard_pressed")
 
@@ -108,8 +112,8 @@ class KeyboardSource(IDeviceIOSource):
         - "deviceio_keyboard": KeyboardOutput from the source's KeyboardTracker
 
     Outputs (Optional -- absent while no provider is attached):
-        - "keyboard_all_keys": 256-entry uint8 bitmap, 1 = held at the end of the frame
-        - "keyboard_pressed": 256-entry uint8 bitmap, 1 = pressed at least once this frame
+        - "keyboard_all_keys": uint8 bitmap, 1 = held at the end of the frame
+        - "keyboard_pressed": uint8 bitmap, 1 = pressed at least once this frame
 
     Usage:
         keyboard = KeyboardSource("keyboard")
@@ -149,7 +153,9 @@ class KeyboardSource(IDeviceIOSource):
 
         Creates a provider, subscribes it to the surface's key and focus-loss callbacks and,
         when ``capture`` is set, asks the surface to yield its own key bindings. Detaching
-        unsubscribes, releases the provider's keys and restores the surface's bindings.
+        unsubscribes, releases the provider's keys and restores the surface's bindings. Every
+        cleanup step runs even if an earlier one raises, and the provider is always closed;
+        failures propagate with earlier ones chained as ``__context__``.
         """
         if not getattr(surface, "supports_keyboard", False):
             raise ValueError(
@@ -163,19 +169,15 @@ class KeyboardSource(IDeviceIOSource):
             else:
                 provider.key_up(code)
 
-        # A surface that fails to subscribe or capture must not stay wired to the tracker.
-        try:
+        # ExitStack runs every callback (last registered first) even when one raises, so the
+        # provider -- registered first -- is always closed.
+        with contextlib.ExitStack() as rollback:
+            rollback.callback(provider.close)
             unsubscribe = surface.add_key_listener(on_key, provider.release_all)
-        except BaseException:
-            provider.close()
-            raise
-        if capture:
-            try:
+            rollback.callback(unsubscribe)
+            if capture:
                 surface.set_keyboard_captured(True)
-            except BaseException:
-                unsubscribe()
-                provider.close()
-                raise
+            rollback.pop_all()
 
         detached = False
 
@@ -184,10 +186,11 @@ class KeyboardSource(IDeviceIOSource):
             if detached:
                 return
             detached = True
-            unsubscribe()
-            if capture:
-                surface.set_keyboard_captured(False)
-            provider.close()
+            with contextlib.ExitStack() as cleanup:
+                cleanup.callback(provider.close)
+                if capture:
+                    cleanup.callback(surface.set_keyboard_captured, False)
+                cleanup.callback(unsubscribe)
 
         return detach
 

@@ -11,9 +11,9 @@ keys each frame plus every press/release, using the "keyboard_all_keys" and
 
 The window is a minimal ``KeyEventSource``: any host window (a sim viewer, a browser
 viewer, ...) can feed Isaac Teleop the same way. It reports each physical key as its evdev
-code, derived from GLFW's scancode (Linux), so it needs no key table. Requires
-``isaaccapture[ui]`` for glfw. A
-keyboard-only pipeline needs no OpenXR runtime, so no CloudXR or headset is involved.
+code, derived from GLFW's scancode (Linux X11 or Wayland), so it needs no key table.
+Requires ``isaaccapture[ui]`` for glfw. A keyboard-only pipeline needs no OpenXR runtime, so
+no CloudXR or headset is involved.
 """
 
 import sys
@@ -27,8 +27,24 @@ from isaaccapture.retargeting_engine.deviceio_source_nodes import KeyboardSource
 from isaaccapture.teleop_session_manager import TeleopSession, TeleopSessionConfig
 
 
-# On Linux, GLFW's scancode is the X11/XKB keycode, which is the evdev code offset by 8.
-_XKB_KEYCODE_OFFSET = 8
+# What GLFW's scancode adds to the evdev code, per backend: X11 reports the XKB keycode
+# (evdev + 8), Wayland the evdev code itself.
+_SCANCODE_OFFSETS = {glfw.PLATFORM_X11: 8, glfw.PLATFORM_WAYLAND: 0}
+
+
+def _unsupported_platform(platform: int) -> RuntimeError:
+    return RuntimeError(
+        f"GLFW platform {platform:#x} is unsupported: only X11 and Wayland scancodes "
+        "map to evdev key codes"
+    )
+
+
+def evdev_code_from_scancode(platform: int, scancode: int) -> int:
+    """Evdev key code for a GLFW ``scancode`` on ``platform`` (``glfw.get_platform()``)."""
+    offset = _SCANCODE_OFFSETS.get(platform)
+    if offset is None:
+        raise _unsupported_platform(platform)
+    return scancode - offset
 
 
 class GlfwKeyWindow:
@@ -39,6 +55,15 @@ class GlfwKeyWindow:
     def __init__(self, title: str):
         if not glfw.init():
             raise RuntimeError("glfw.init() failed (no display?)")
+        if not hasattr(glfw, "get_platform"):
+            glfw.terminate()
+            raise RuntimeError(
+                "glfw>=2.7 is required to tell X11 from Wayland scancodes"
+            )
+        self._platform = glfw.get_platform()
+        if self._platform not in _SCANCODE_OFFSETS:
+            glfw.terminate()
+            raise _unsupported_platform(self._platform)
         glfw.window_hint(glfw.CLIENT_API, glfw.NO_API)
         self._window = glfw.create_window(480, 120, title, None, None)
         if not self._window:
@@ -60,7 +85,7 @@ class GlfwKeyWindow:
     # GLFW callbacks --------------------------------------------------------------
     def _on_key(self, _window, _key, scancode, action, _mods):
         # Report the physical key as its evdev code, so no key table is needed.
-        code = scancode - _XKB_KEYCODE_OFFSET
+        code = evdev_code_from_scancode(self._platform, scancode)
         if code <= 0 or action == glfw.REPEAT:
             return
         for on_key, _ in list(self._listeners):

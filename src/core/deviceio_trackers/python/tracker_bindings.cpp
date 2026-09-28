@@ -90,6 +90,8 @@ PYBIND11_MODULE(_deviceio_trackers, m)
     m.def("w3c_code_from_evdev", &core::w3c_code_from_evdev, py::arg("evdev_code"),
           "W3C KeyboardEvent.code for an evdev key code, or None when it has no W3C name.");
 
+    m.attr("KEYBOARD_KEY_CODE_COUNT") = core::kKeyboardKeyCodeCount;
+
     // One member per physical key, named by its W3C KeyboardEvent.code, valued by its evdev code.
     // Built from Chromium's key table (see third_party/chromium), so no key list is kept by hand.
     py::enum_<EvdevKeyCode> evdev_key_code(

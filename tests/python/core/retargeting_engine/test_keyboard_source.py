@@ -12,7 +12,11 @@ per-frame merge and MCAP round trip are covered by the C++ tests.
 import numpy as np
 import pytest
 
-from isaaccapture.deviceio_trackers import evdev_code_from_w3c
+from isaaccapture.deviceio_trackers import (
+    KEYBOARD_KEY_CODE_COUNT,
+    EvdevKeyCode,
+    evdev_code_from_w3c,
+)
 from isaaccapture.retargeters import KeyboardGripperRetargeter
 from isaaccapture.retargeting_engine.deviceio_source_nodes import (
     KeyboardSource,
@@ -27,6 +31,7 @@ from isaaccapture.schema import KeyAction, KeyboardOutput, KeyEvent
 # Evdev key codes (linux/input-event-codes.h).
 KEY_W, KEY_A = 17, 30
 KEY_F1 = 59  # exercises "every key" coverage, not just the SE2/SE3 bindings
+KEY_FN = 464  # above 255
 
 
 def _run_source(src, pressed_keys, events=()):
@@ -83,6 +88,22 @@ class TestKeyboardSourceConversion:
         assert pressed[KEY_A] == 0
         assert held.sum() == 0
 
+    def test_bitmaps_cover_every_evdev_key_code(self):
+        src = KeyboardSource(name="keyboard")
+        events = [(1, KEY_FN, KeyAction.PRESS), (2, KEY_FN, KeyAction.RELEASE)]
+        outputs = _run_source(src, [KEYBOARD_KEY_CODE_COUNT - 1], events)
+
+        held = np.asarray(outputs["keyboard_all_keys"][0])
+        pressed = np.asarray(outputs["keyboard_pressed"][0])
+        assert KEYBOARD_KEY_CODE_COUNT == 768  # Linux KEY_CNT
+        assert held.shape == pressed.shape == (KEYBOARD_KEY_CODE_COUNT,)
+        assert held.nonzero()[0].tolist() == [KEYBOARD_KEY_CODE_COUNT - 1]
+        assert pressed.nonzero()[0].tolist() == [KEY_FN]
+        assert all(
+            0 < int(m) < KEYBOARD_KEY_CODE_COUNT
+            for m in EvdevKeyCode.__members__.values()
+        )
+
 
 class TestKeyboardProvider:
     def test_press_release_report_changes(self):
@@ -100,6 +121,14 @@ class TestKeyboardProvider:
         assert provider.key_up(KEY_W) is True  # same key through either spelling
         assert provider.key_down("NotAKey") is False
 
+    def test_codes_outside_the_evdev_range_are_rejected(self):
+        provider = KeyboardSource(name="keyboard").create_provider("test")
+
+        assert provider.key_down("Fn") is True
+        assert provider.key_down(KEY_FN) is False  # same key, already held
+        assert provider.key_down(KEYBOARD_KEY_CODE_COUNT) is False
+        assert provider.tap(KEYBOARD_KEY_CODE_COUNT) is False
+
     def test_evdev_code_from_w3c(self):
         assert evdev_code_from_w3c("KeyW") == KEY_W
         assert evdev_code_from_w3c("ArrowUp") == 103
@@ -107,15 +136,13 @@ class TestKeyboardProvider:
         assert evdev_code_from_w3c("NotAKey") is None
 
     def test_evdev_key_code_is_generated_from_the_key_table(self):
-        import numpy as np
-
-        from isaaccapture.deviceio_trackers import EvdevKeyCode, w3c_code_from_evdev
+        from isaaccapture.deviceio_trackers import w3c_code_from_evdev
 
         assert EvdevKeyCode.KeyW == KEY_W
         assert int(EvdevKeyCode.ArrowUp) == 103
         assert EvdevKeyCode(KEY_W).name == "KeyW"
         assert w3c_code_from_evdev(KEY_W) == "KeyW"
-        bitmap = np.zeros(256, dtype=np.uint8)
+        bitmap = np.zeros(KEYBOARD_KEY_CODE_COUNT, dtype=np.uint8)
         bitmap[EvdevKeyCode.KeyW] = 1
         assert bitmap[KEY_W] == 1
         # every member is the evdev code of the W3C code it is named after
@@ -164,6 +191,24 @@ class _RecordingProvider:
 
     def close(self):
         self.closed = True
+
+
+def _raise(message):
+    """A callable that fails with ``message``."""
+
+    def fail(*args):
+        raise RuntimeError(message)
+
+    return fail
+
+
+def _attach_real(src, surface):
+    """Attach with a real provider, returning it too; closing it releases its held keys."""
+    providers = []
+    create = src.create_provider
+    src.create_provider = lambda name: providers.append(create(name)) or providers[-1]
+    detach = src.attach(surface)
+    return detach, providers[0]
 
 
 class TestAttach:
@@ -226,6 +271,50 @@ class TestAttach:
 
         with pytest.raises(RuntimeError):
             src.attach(surface)
+        assert provider.closed
+
+    def test_detach_finishes_when_unsubscribe_raises(self):
+        src = KeyboardSource(name="keyboard")
+        surface = _FakeSurface()
+        surface.add_key_listener = lambda on_key, on_focus_lost: _raise("unsubscribe")
+
+        detach, provider = _attach_real(src, surface)
+        provider.key_down("KeyW")
+        with pytest.raises(RuntimeError, match="unsubscribe"):
+            detach()
+        detach()  # the remaining steps already ran: nothing left to do or raise
+
+        assert surface.captured == [True, False]
+        assert provider.closed
+        assert provider.key_down("KeyA") is False
+
+    def test_detach_closes_the_provider_when_capture_restore_raises(self):
+        src = KeyboardSource(name="keyboard")
+        surface = _FakeSurface()
+        detach, provider = _attach_real(src, surface)
+        surface.listeners[0][0]("KeyW", True)
+        surface.set_keyboard_captured = _raise("restore")
+
+        with pytest.raises(RuntimeError, match="restore"):
+            detach()
+
+        assert surface.listeners == []
+        assert provider.closed
+
+    def test_failed_rollback_still_closes_the_provider(self, monkeypatch):
+        src = KeyboardSource(name="keyboard")
+        provider = _RecordingProvider()
+        monkeypatch.setattr(src, "create_provider", lambda name: provider)
+        surface = _FakeSurface()
+        surface.add_key_listener = lambda on_key, on_focus_lost: _raise("unsubscribe")
+        surface.set_keyboard_captured = _raise("capture")
+
+        with pytest.raises(RuntimeError, match="unsubscribe") as excinfo:
+            src.attach(surface)
+
+        assert (
+            str(excinfo.value.__context__) == "capture"
+        )  # the original failure is kept
         assert provider.closed
 
     def test_attach_rejects_surface_without_keyboard(self):
