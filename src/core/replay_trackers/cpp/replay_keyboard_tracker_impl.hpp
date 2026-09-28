@@ -4,6 +4,7 @@
 #pragma once
 
 #include <deviceio_base/keyboard_tracker_base.hpp>
+#include <log_bridge/logger.hpp>
 #include <mcap/tracker_channels.hpp>
 #include <schema/keyboard_generated.h>
 
@@ -41,7 +42,8 @@ private:
     Serialized<KeyboardOutput> tracked_;
     std::unique_ptr<KeyboardMcapViewers> mcap_viewers_;
     std::shared_ptr<KeyboardInputState> state_;
-    std::string no_data_message_;
+    std::string base_name_;
+    std::shared_ptr<spdlog::logger> logger_;
     bool warned_no_data_ = false;
     bool warned_live_input_ = false;
 };

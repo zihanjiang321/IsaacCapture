@@ -8,7 +8,6 @@
 #include <schema/keyboard_bfbs_generated.h>
 #include <schema/serialized.hpp>
 
-#include <iostream>
 #include <utility>
 #include <vector>
 
@@ -26,7 +25,8 @@ ReplayKeyboardTrackerImpl::ReplayKeyboardTrackerImpl(std::unique_ptr<mcap::McapR
               KeyboardRecordingTraits::replay_channels.begin(), KeyboardRecordingTraits::replay_channels.end()),
           recorded)),
       state_(std::move(state)),
-      no_data_message_("ReplayKeyboardTrackerImpl[" + std::string(base_name) + "]: no data (EOF or gap)")
+      base_name_(base_name),
+      logger_(isaaccapture::Logger::get("isaaccapture.core.ReplayKeyboardTrackerImpl"))
 {
 }
 
@@ -39,7 +39,7 @@ void ReplayKeyboardTrackerImpl::update(int64_t /*monotonic_time_ns*/)
 {
     if (!state_->drain().events.empty() && !warned_live_input_)
     {
-        std::cerr << "ReplayKeyboardTrackerImpl: ignoring live keyboard provider input during replay" << std::endl;
+        logger_->warn("[{}] ignoring live keyboard provider input during replay", base_name_);
         warned_live_input_ = true;
     }
 
@@ -53,7 +53,7 @@ void ReplayKeyboardTrackerImpl::update(int64_t /*monotonic_time_ns*/)
     {
         if (!warned_no_data_)
         {
-            std::cerr << no_data_message_ << std::endl;
+            logger_->warn("[{}] no data (EOF or gap)", base_name_);
             warned_no_data_ = true;
         }
         tracked_.reset();
