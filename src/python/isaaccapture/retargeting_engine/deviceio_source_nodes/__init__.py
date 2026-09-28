@@ -11,8 +11,11 @@ from .head_source import HeadSource
 from .hands_source import HandsSource
 from .controllers_source import ControllersSource
 from .pedals_source import Generic3AxisPedalSource
+
+# EvdevKeyCode is generated from Chromium's key table in the native module: members are named
+# by W3C KeyboardEvent.code (EvdevKeyCode.KeyW) and valued by evdev code.
+from isaaccapture.deviceio_trackers import EvdevKeyCode
 from .keyboard_source import (
-    EvdevKeyCode,
     KeyboardAllKeysType,
     KeyboardPressedType,
     KeyboardSource,

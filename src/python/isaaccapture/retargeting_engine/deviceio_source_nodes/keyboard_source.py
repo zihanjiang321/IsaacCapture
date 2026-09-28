@@ -25,9 +25,6 @@ from ..tensor_types import NDArrayType, DLDataType
 from ..interface.tensor_group_type import OptionalType, TensorGroupType
 from .deviceio_tensor_types import DeviceIOKeyboardOutputTracked
 
-# Generated from Chromium's key table in the native module: members are named by W3C
-# KeyboardEvent.code (EvdevKeyCode.KeyW) and valued by evdev code. Re-exported here.
-
 if TYPE_CHECKING:
     from isaaccapture.deviceio_trackers import ITracker, KeyboardProvider
     from isaaccapture.schema import KeyboardOutput
