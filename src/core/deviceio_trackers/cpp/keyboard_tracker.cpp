@@ -20,122 +20,80 @@ int64_t monotonic_now_ns()
     return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-// W3C UI Events KeyboardEvent.code -> Linux evdev (linux/input-event-codes.h), standard
-// 104/105-key layouts. Codes are physical key positions, so layouts do not affect them.
+// Chromium's physical key table (third_party/chromium/dom_code_data.inc, BSD-3-Clause): one row
+// per key with its USB HID, evdev, XKB, Windows and macOS codes and its W3C KeyboardEvent.code.
+// Rows without a code string, or that the Linux kernel does not map (evdev 0), are skipped.
+struct DomCodeRow
+{
+    const char* code;
+    uint16_t evdev;
+};
+
+#define DOM_CODE(usb, evdev, xkb, win, mac, code, id)                                                                  \
+    DomCodeRow                                                                                                         \
+    {                                                                                                                  \
+        code, evdev                                                                                                    \
+    }
+#define DOM_CODE_DECLARATION constexpr DomCodeRow kDomCodeRows[] =
+#include "third_party/chromium/dom_code_data.inc"
+#undef DOM_CODE
+#undef DOM_CODE_DECLARATION
+
+const std::vector<KeyCodeName>& build_key_codes()
+{
+    static const std::vector<KeyCodeName> key_codes = []
+    {
+        std::vector<KeyCodeName> out;
+        for (const auto& row : kDomCodeRows)
+        {
+            if (row.code != nullptr && row.evdev != 0)
+                out.push_back({ row.code, row.evdev });
+        }
+        return out;
+    }();
+    return key_codes;
+}
+
 const std::unordered_map<std::string_view, uint16_t>& w3c_to_evdev()
 {
-    static const std::unordered_map<std::string_view, uint16_t> table = {
-        { "Escape", 1 },
-        { "Digit1", 2 },
-        { "Digit2", 3 },
-        { "Digit3", 4 },
-        { "Digit4", 5 },
-        { "Digit5", 6 },
-        { "Digit6", 7 },
-        { "Digit7", 8 },
-        { "Digit8", 9 },
-        { "Digit9", 10 },
-        { "Digit0", 11 },
-        { "Minus", 12 },
-        { "Equal", 13 },
-        { "Backspace", 14 },
-        { "Tab", 15 },
-        { "KeyQ", 16 },
-        { "KeyW", 17 },
-        { "KeyE", 18 },
-        { "KeyR", 19 },
-        { "KeyT", 20 },
-        { "KeyY", 21 },
-        { "KeyU", 22 },
-        { "KeyI", 23 },
-        { "KeyO", 24 },
-        { "KeyP", 25 },
-        { "BracketLeft", 26 },
-        { "BracketRight", 27 },
-        { "Enter", 28 },
-        { "ControlLeft", 29 },
-        { "KeyA", 30 },
-        { "KeyS", 31 },
-        { "KeyD", 32 },
-        { "KeyF", 33 },
-        { "KeyG", 34 },
-        { "KeyH", 35 },
-        { "KeyJ", 36 },
-        { "KeyK", 37 },
-        { "KeyL", 38 },
-        { "Semicolon", 39 },
-        { "Quote", 40 },
-        { "Backquote", 41 },
-        { "ShiftLeft", 42 },
-        { "Backslash", 43 },
-        { "KeyZ", 44 },
-        { "KeyX", 45 },
-        { "KeyC", 46 },
-        { "KeyV", 47 },
-        { "KeyB", 48 },
-        { "KeyN", 49 },
-        { "KeyM", 50 },
-        { "Comma", 51 },
-        { "Period", 52 },
-        { "Slash", 53 },
-        { "ShiftRight", 54 },
-        { "NumpadMultiply", 55 },
-        { "AltLeft", 56 },
-        { "Space", 57 },
-        { "CapsLock", 58 },
-        { "F1", 59 },
-        { "F2", 60 },
-        { "F3", 61 },
-        { "F4", 62 },
-        { "F5", 63 },
-        { "F6", 64 },
-        { "F7", 65 },
-        { "F8", 66 },
-        { "F9", 67 },
-        { "F10", 68 },
-        { "NumLock", 69 },
-        { "ScrollLock", 70 },
-        { "Numpad7", 71 },
-        { "Numpad8", 72 },
-        { "Numpad9", 73 },
-        { "NumpadSubtract", 74 },
-        { "Numpad4", 75 },
-        { "Numpad5", 76 },
-        { "Numpad6", 77 },
-        { "NumpadAdd", 78 },
-        { "Numpad1", 79 },
-        { "Numpad2", 80 },
-        { "Numpad3", 81 },
-        { "Numpad0", 82 },
-        { "NumpadDecimal", 83 },
-        { "IntlBackslash", 86 },
-        { "F11", 87 },
-        { "F12", 88 },
-        { "NumpadEnter", 96 },
-        { "ControlRight", 97 },
-        { "NumpadDivide", 98 },
-        { "PrintScreen", 99 },
-        { "AltRight", 100 },
-        { "Home", 102 },
-        { "ArrowUp", 103 },
-        { "PageUp", 104 },
-        { "ArrowLeft", 105 },
-        { "ArrowRight", 106 },
-        { "End", 107 },
-        { "ArrowDown", 108 },
-        { "PageDown", 109 },
-        { "Insert", 110 },
-        { "Delete", 111 },
-        { "NumpadEqual", 117 },
-        { "Pause", 119 },
-        { "MetaLeft", 125 },
-        { "MetaRight", 126 },
-        { "ContextMenu", 127 },
-    };
+    static const std::unordered_map<std::string_view, uint16_t> table = []
+    {
+        std::unordered_map<std::string_view, uint16_t> out;
+        for (const auto& key : build_key_codes())
+            out.emplace(key.w3c_code, key.evdev_code);
+        return out;
+    }();
+    return table;
+}
+
+const std::unordered_map<uint16_t, std::string_view>& evdev_to_w3c()
+{
+    // The first row wins when several codes share an evdev code.
+    static const std::unordered_map<uint16_t, std::string_view> table = []
+    {
+        std::unordered_map<uint16_t, std::string_view> out;
+        for (const auto& key : build_key_codes())
+            out.emplace(key.evdev_code, key.w3c_code);
+        return out;
+    }();
     return table;
 }
 
 } // namespace
+
+const std::vector<KeyCodeName>& keyboard_key_codes()
+{
+    return build_key_codes();
+}
+
+std::optional<std::string_view> w3c_code_from_evdev(uint16_t evdev_code)
+{
+    const auto& table = evdev_to_w3c();
+    const auto it = table.find(evdev_code);
+    if (it == table.end())
+        return std::nullopt;
+    return it->second;
+}
 
 std::optional<uint16_t> evdev_code_from_w3c(std::string_view w3c_code)
 {

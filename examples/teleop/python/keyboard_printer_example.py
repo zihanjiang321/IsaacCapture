@@ -10,7 +10,9 @@ keys each frame plus every press/release, using the "keyboard_all_keys" and
 "keyboard_pressed" bitmaps.
 
 The window is a minimal ``KeyEventSource``: any host window (a sim viewer, a browser
-viewer, ...) can feed Isaac Teleop the same way. Requires ``isaaccapture[ui]`` for glfw. A
+viewer, ...) can feed Isaac Teleop the same way. It reports each physical key as its evdev
+code, derived from GLFW's scancode (Linux), so it needs no key table. Requires
+``isaaccapture[ui]`` for glfw. A
 keyboard-only pipeline needs no OpenXR runtime, so no CloudXR or headset is involved.
 """
 
@@ -20,36 +22,13 @@ import time
 import glfw
 import numpy as np
 
-from isaaccapture.retargeting_engine.deviceio_source_nodes import (
-    EvdevKeyCode,
-    KeyboardSource,
-)
+from isaaccapture.deviceio_trackers import w3c_code_from_evdev
+from isaaccapture.retargeting_engine.deviceio_source_nodes import KeyboardSource
 from isaaccapture.teleop_session_manager import TeleopSession, TeleopSessionConfig
 
 
-def _glfw_to_w3c() -> dict[int, str]:
-    """GLFW key tokens -> W3C KeyboardEvent.code for the keys this example cares about."""
-    table = {getattr(glfw, f"KEY_{c}"): f"Key{c}" for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
-    table |= {getattr(glfw, f"KEY_{d}"): f"Digit{d}" for d in "0123456789"}
-    table |= {getattr(glfw, f"KEY_KP_{d}"): f"Numpad{d}" for d in "0123456789"}
-    table |= {getattr(glfw, f"KEY_F{n}"): f"F{n}" for n in range(1, 13)}
-    table |= {
-        glfw.KEY_UP: "ArrowUp",
-        glfw.KEY_DOWN: "ArrowDown",
-        glfw.KEY_LEFT: "ArrowLeft",
-        glfw.KEY_RIGHT: "ArrowRight",
-        glfw.KEY_SPACE: "Space",
-        glfw.KEY_ENTER: "Enter",
-        glfw.KEY_ESCAPE: "Escape",
-        glfw.KEY_TAB: "Tab",
-        glfw.KEY_LEFT_SHIFT: "ShiftLeft",
-        glfw.KEY_RIGHT_SHIFT: "ShiftRight",
-        glfw.KEY_LEFT_CONTROL: "ControlLeft",
-        glfw.KEY_RIGHT_CONTROL: "ControlRight",
-        glfw.KEY_LEFT_ALT: "AltLeft",
-        glfw.KEY_RIGHT_ALT: "AltRight",
-    }
-    return table
+# On Linux, GLFW's scancode is the X11/XKB keycode, which is the evdev code offset by 8.
+_XKB_KEYCODE_OFFSET = 8
 
 
 class GlfwKeyWindow:
@@ -65,7 +44,6 @@ class GlfwKeyWindow:
         if not self._window:
             glfw.terminate()
             raise RuntimeError("glfw.create_window() failed")
-        self._codes = _glfw_to_w3c()
         self._listeners: list = []
         glfw.set_key_callback(self._window, self._on_key)
         glfw.set_window_focus_callback(self._window, self._on_focus)
@@ -80,9 +58,10 @@ class GlfwKeyWindow:
         pass  # this window has no key bindings of its own
 
     # GLFW callbacks --------------------------------------------------------------
-    def _on_key(self, _window, key, _scancode, action, _mods):
-        code = self._codes.get(key)
-        if code is None or action == glfw.REPEAT:
+    def _on_key(self, _window, _key, scancode, action, _mods):
+        # Report the physical key as its evdev code, so no key table is needed.
+        code = scancode - _XKB_KEYCODE_OFFSET
+        if code <= 0 or action == glfw.REPEAT:
             return
         for on_key, _ in list(self._listeners):
             on_key(code, action == glfw.PRESS)
@@ -105,10 +84,7 @@ class GlfwKeyWindow:
 
 
 def _key_name(code: int) -> str:
-    try:
-        return EvdevKeyCode(code).name.removeprefix("KEY_")
-    except ValueError:
-        return f"code{code}"
+    return w3c_code_from_evdev(code) or f"code{code}"
 
 
 def main():

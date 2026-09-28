@@ -84,20 +84,20 @@ class KeyboardToSe3RelRetargeter(BaseRetargeter):
         rot_sens = self._config.rot_sensitivity
 
         delta_pos = np.zeros(3)
-        delta_pos[0] += pos_sens if bitmap[EvdevKeyCode.KEY_W] else 0.0
-        delta_pos[0] -= pos_sens if bitmap[EvdevKeyCode.KEY_S] else 0.0
-        delta_pos[1] += pos_sens if bitmap[EvdevKeyCode.KEY_A] else 0.0
-        delta_pos[1] -= pos_sens if bitmap[EvdevKeyCode.KEY_D] else 0.0
-        delta_pos[2] += pos_sens if bitmap[EvdevKeyCode.KEY_Q] else 0.0
-        delta_pos[2] -= pos_sens if bitmap[EvdevKeyCode.KEY_E] else 0.0
+        delta_pos[0] += pos_sens if bitmap[EvdevKeyCode.KeyW] else 0.0
+        delta_pos[0] -= pos_sens if bitmap[EvdevKeyCode.KeyS] else 0.0
+        delta_pos[1] += pos_sens if bitmap[EvdevKeyCode.KeyA] else 0.0
+        delta_pos[1] -= pos_sens if bitmap[EvdevKeyCode.KeyD] else 0.0
+        delta_pos[2] += pos_sens if bitmap[EvdevKeyCode.KeyQ] else 0.0
+        delta_pos[2] -= pos_sens if bitmap[EvdevKeyCode.KeyE] else 0.0
 
         delta_euler = np.zeros(3)
-        delta_euler[0] += rot_sens if bitmap[EvdevKeyCode.KEY_Z] else 0.0
-        delta_euler[0] -= rot_sens if bitmap[EvdevKeyCode.KEY_X] else 0.0
-        delta_euler[1] += rot_sens if bitmap[EvdevKeyCode.KEY_T] else 0.0
-        delta_euler[1] -= rot_sens if bitmap[EvdevKeyCode.KEY_G] else 0.0
-        delta_euler[2] += rot_sens if bitmap[EvdevKeyCode.KEY_C] else 0.0
-        delta_euler[2] -= rot_sens if bitmap[EvdevKeyCode.KEY_V] else 0.0
+        delta_euler[0] += rot_sens if bitmap[EvdevKeyCode.KeyZ] else 0.0
+        delta_euler[0] -= rot_sens if bitmap[EvdevKeyCode.KeyX] else 0.0
+        delta_euler[1] += rot_sens if bitmap[EvdevKeyCode.KeyT] else 0.0
+        delta_euler[1] -= rot_sens if bitmap[EvdevKeyCode.KeyG] else 0.0
+        delta_euler[2] += rot_sens if bitmap[EvdevKeyCode.KeyC] else 0.0
+        delta_euler[2] -= rot_sens if bitmap[EvdevKeyCode.KeyV] else 0.0
 
         delta_rot = Rotation.from_euler("XYZ", delta_euler).as_rotvec()
 
@@ -136,7 +136,7 @@ class KeyboardGripperRetargeter(BaseRetargeter):
         if context.execution_events.reset:
             # A press landing on the reset frame is consumed by the reset.
             self._closed = False
-        elif not pressed.is_none and np.asarray(pressed[0])[EvdevKeyCode.KEY_K]:
+        elif not pressed.is_none and np.asarray(pressed[0])[EvdevKeyCode.KeyK]:
             self._closed = not self._closed
 
         gripper_out[0] = -1.0 if self._closed else 1.0

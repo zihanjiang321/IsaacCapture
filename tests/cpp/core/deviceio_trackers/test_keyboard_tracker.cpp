@@ -193,6 +193,27 @@ TEST_CASE("evdev_code_from_w3c maps standard keys", "[unit][keyboard]")
     CHECK_FALSE(core::evdev_code_from_w3c("NotAKey").has_value());
 }
 
+TEST_CASE("w3c_code_from_evdev names keys from Chromium's key table", "[unit][keyboard]")
+{
+    CHECK(core::w3c_code_from_evdev(KEY_W) == std::string_view("KeyW"));
+    CHECK(core::w3c_code_from_evdev(127) == std::string_view("ContextMenu"));
+    CHECK(core::w3c_code_from_evdev(86) == std::string_view("IntlBackslash"));
+    CHECK_FALSE(core::w3c_code_from_evdev(0).has_value());
+}
+
+TEST_CASE("keyboard_key_codes: every key round-trips", "[unit][keyboard]")
+{
+    const auto& keys = core::keyboard_key_codes();
+    REQUIRE(keys.size() > 100);
+    for (const auto& key : keys)
+    {
+        CHECK(core::evdev_code_from_w3c(key.w3c_code) == key.evdev_code);
+        const auto name = core::w3c_code_from_evdev(key.evdev_code);
+        REQUIRE(name.has_value());
+        CHECK(core::evdev_code_from_w3c(*name) == key.evdev_code);
+    }
+}
+
 TEST_CASE("KeyboardProvider: tap reports a press and release without holding", "[unit][keyboard]")
 {
     core::KeyboardTracker tracker;

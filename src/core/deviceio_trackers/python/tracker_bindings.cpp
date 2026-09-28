@@ -47,6 +47,12 @@ py::object to_python(const core::Serialized<T>& handle)
 // reads this frame keeps its values after the next session.update(), which publishes a new
 // buffer rather than refilling this one.
 
+// Values come from core::keyboard_key_codes() at import; see the EvdevKeyCode binding below.
+// Unscoped so pybind11 lets members compare equal to plain ints, like an IntEnum.
+enum EvdevKeyCode : uint16_t
+{
+};
+
 PYBIND11_MODULE(_deviceio_trackers, m)
 {
     // Load schema pybind converters (the encoded table views) before exposing tracker accessors.
@@ -81,6 +87,19 @@ PYBIND11_MODULE(_deviceio_trackers, m)
 
     m.def("evdev_code_from_w3c", &core::evdev_code_from_w3c, py::arg("w3c_code"),
           "Evdev key code for a W3C KeyboardEvent.code ('KeyW', 'ArrowUp', ...), or None if unmapped.");
+    m.def("w3c_code_from_evdev", &core::w3c_code_from_evdev, py::arg("evdev_code"),
+          "W3C KeyboardEvent.code for an evdev key code, or None when it has no W3C name.");
+
+    // One member per physical key, named by its W3C KeyboardEvent.code, valued by its evdev code.
+    // Built from Chromium's key table (see third_party/chromium), so no key list is kept by hand.
+    py::enum_<EvdevKeyCode> evdev_key_code(
+        m, "EvdevKeyCode", py::arithmetic(),
+        "Evdev key codes (linux/input-event-codes.h) named by W3C KeyboardEvent.code, e.g. "
+        "EvdevKeyCode.KeyW == 17. Values double as indices into the keyboard key bitmaps.");
+    for (const auto& key : core::keyboard_key_codes())
+    {
+        evdev_key_code.value(std::string(key.w3c_code).c_str(), static_cast<EvdevKeyCode>(key.evdev_code));
+    }
 
     py::class_<core::KeyboardProvider, std::shared_ptr<core::KeyboardProvider>>(
         m, "KeyboardProvider",

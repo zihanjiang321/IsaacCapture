@@ -86,32 +86,32 @@ class KeyboardToSe2Retargeter(BaseRetargeter):
         velocity = np.zeros(3)
         velocity[0] += (
             v_x_sens
-            if (bitmap[EvdevKeyCode.KEY_KP8] or bitmap[EvdevKeyCode.KEY_UP])
+            if (bitmap[EvdevKeyCode.Numpad8] or bitmap[EvdevKeyCode.ArrowUp])
             else 0.0
         )
         velocity[0] -= (
             v_x_sens
-            if (bitmap[EvdevKeyCode.KEY_KP2] or bitmap[EvdevKeyCode.KEY_DOWN])
+            if (bitmap[EvdevKeyCode.Numpad2] or bitmap[EvdevKeyCode.ArrowDown])
             else 0.0
         )
         velocity[1] += (
             v_y_sens
-            if (bitmap[EvdevKeyCode.KEY_KP4] or bitmap[EvdevKeyCode.KEY_LEFT])
+            if (bitmap[EvdevKeyCode.Numpad4] or bitmap[EvdevKeyCode.ArrowLeft])
             else 0.0
         )
         velocity[1] -= (
             v_y_sens
-            if (bitmap[EvdevKeyCode.KEY_KP6] or bitmap[EvdevKeyCode.KEY_RIGHT])
+            if (bitmap[EvdevKeyCode.Numpad6] or bitmap[EvdevKeyCode.ArrowRight])
             else 0.0
         )
         velocity[2] += (
             omega_z_sens
-            if (bitmap[EvdevKeyCode.KEY_KP7] or bitmap[EvdevKeyCode.KEY_Z])
+            if (bitmap[EvdevKeyCode.Numpad7] or bitmap[EvdevKeyCode.KeyZ])
             else 0.0
         )
         velocity[2] -= (
             omega_z_sens
-            if (bitmap[EvdevKeyCode.KEY_KP9] or bitmap[EvdevKeyCode.KEY_X])
+            if (bitmap[EvdevKeyCode.Numpad9] or bitmap[EvdevKeyCode.KeyX])
             else 0.0
         )
 

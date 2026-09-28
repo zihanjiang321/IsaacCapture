@@ -20,9 +20,22 @@
 namespace core
 {
 
+//! A physical key: its W3C `KeyboardEvent.code` and its Linux evdev code.
+struct KeyCodeName
+{
+    std::string_view w3c_code;
+    uint16_t evdev_code;
+};
+
+//! Every key with both a W3C `KeyboardEvent.code` and an evdev code, from Chromium's key table.
+const std::vector<KeyCodeName>& keyboard_key_codes();
+
 //! Evdev key code for a W3C `KeyboardEvent.code` ("KeyW", "ArrowUp", "Numpad8", ...), or
-//! nullopt for a code with no standard-keyboard evdev equivalent.
+//! nullopt for a code with no evdev equivalent.
 std::optional<uint16_t> evdev_code_from_w3c(std::string_view w3c_code);
+
+//! W3C `KeyboardEvent.code` for an evdev key code, or nullopt for a code with no W3C name.
+std::optional<std::string_view> w3c_code_from_evdev(uint16_t evdev_code);
 
 /*!
  * @brief Thread-safe key state shared by a KeyboardTracker, its providers and its impl.

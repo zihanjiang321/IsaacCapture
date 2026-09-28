@@ -106,6 +106,22 @@ class TestKeyboardProvider:
         assert evdev_code_from_w3c("Numpad8") == 72
         assert evdev_code_from_w3c("NotAKey") is None
 
+    def test_evdev_key_code_is_generated_from_the_key_table(self):
+        import numpy as np
+
+        from isaaccapture.deviceio_trackers import EvdevKeyCode, w3c_code_from_evdev
+
+        assert EvdevKeyCode.KeyW == KEY_W
+        assert int(EvdevKeyCode.ArrowUp) == 103
+        assert EvdevKeyCode(KEY_W).name == "KeyW"
+        assert w3c_code_from_evdev(KEY_W) == "KeyW"
+        bitmap = np.zeros(256, dtype=np.uint8)
+        bitmap[EvdevKeyCode.KeyW] = 1
+        assert bitmap[KEY_W] == 1
+        # every member is the evdev code of the W3C code it is named after
+        for name, member in EvdevKeyCode.__members__.items():
+            assert evdev_code_from_w3c(name) == int(member)
+
     def test_closed_provider_ignores_input(self):
         with KeyboardSource(name="keyboard").create_provider("test") as provider:
             assert provider.name == "test"

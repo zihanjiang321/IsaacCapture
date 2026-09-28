@@ -29,10 +29,8 @@ import tty
 
 import numpy as np
 
-from isaaccapture.retargeting_engine.deviceio_source_nodes import (
-    EvdevKeyCode,
-    KeyboardSource,
-)
+from isaaccapture.deviceio_trackers import w3c_code_from_evdev
+from isaaccapture.retargeting_engine.deviceio_source_nodes import KeyboardSource
 from isaaccapture.teleop_session_manager import TeleopSession, TeleopSessionConfig
 
 # kitty keyboard protocol flags: disambiguate (1) | report event types (2) | all keys as escapes (8).
@@ -202,10 +200,7 @@ class TerminalKeySource:
 
 
 def _key_name(code: int) -> str:
-    try:
-        return EvdevKeyCode(code).name.removeprefix("KEY_")
-    except ValueError:
-        return f"code{code}"
+    return w3c_code_from_evdev(code) or f"code{code}"
 
 
 def main():
